@@ -25,6 +25,7 @@
 #create qt app early, in order to show unhandled exceptions graphically.
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
+import qwt
 import utils.procutils
 
 import procreader.reader
@@ -45,6 +46,10 @@ import signal
 import procreader.tcpip_stat as tcpip_stat
 import rootproxy
 import messageui
+
+#DBG
+from ipdb import set_trace as bp #USE: bp()
+
 
 g_timer = None
 g_reader = None
@@ -73,13 +78,38 @@ g_procList = {}
 #default settings
 g_settings = {}
 g_defaultSettings = \
-{"fontSize": 10, 
+{"fontSize": 10,
  "columnWidths": [100,60,40,100,30,30,30,30],
  "updateTimer": 1000,
  "historySampleCount": 200
 }
 
 g_treeViewcolumns = ["Process","PID","CPU","Command Line", "User", "Chan","#thread"]
+
+
+def _get_top_proc(history_fraction):
+  frac = history_fraction
+  # get length of history  => fraction to index  => proc with max cpu_usage on that history_index
+  if g_procList  and  0 <= frac <= 1:
+    rnd_hist = list(g_procList.values())[0]['history']
+    ind = round(frac*rnd_hist.HistoryDepth)
+    _pid_hists = ((pid, d['history']) for pid,d in g_procList.items())
+    _pid_usages = ((pid, hist.cpuUsageHistory[ind] + hist.cpuUsageKernelHistory[ind]) for pid,hist in _pid_hists)
+    top_pid, usage = max(_pid_usages, key=lambda it: it[1])
+
+    proc = g_procList[top_pid]
+    history = proc['history']
+    glob_usages = [g_cpuUsageHistory[ind], g_cpuUsageSystemHistory[ind], g_cpuUsageIrqHistory[ind],
+        g_cpuUsageIoWaitHistory[ind]]
+    glob_usages = ['{:.1f}'.format(val) for val in glob_usages]
+    hint_lines = [
+      f'{proc["name"]} ({top_pid}): {usage:.1f}% / {sum(glob_usages):.1f}%  {glob_usages}',
+      f'cpu: {history.cpuUsageHistory[ind]:.1f}%',
+      f'kernel: {history.cpuUsageKernelHistory[ind]:.1f}%',
+      f'IO: {history.IOHistory[ind]:.1f}',
+    ]
+    return '\n'.join(hint_lines)
+  return f'bad frac: {frac}'
 
 
 def performMenuAction(action):
@@ -163,6 +193,115 @@ def performMenuAction(action):
   else:
     utils.procutils.log("This action (%s)is not yet supported." %action)
 
+'!!! MY'
+
+class CanvasPicker(QtCore.QObject):
+    def __init__(self, plot):
+        QtCore.QObject.__init__(self, plot)
+        #self.__selectedCurve = None
+        #self.__selectedPoint = -1
+        self.__plot = plot
+        canvas = plot.canvas()
+        canvas.installEventFilter(self)
+        # We want the focus, but no focus rect.
+        # The selected point will be highlighted instead.
+        canvas.setFocusPolicy(QtCore.Qt.StrongFocus)
+        canvas.setCursor(QtCore.Qt.PointingHandCursor)
+        canvas.setFocusIndicator(qwt.QwtPlotCanvas.ItemFocusIndicator)
+        canvas.setFocus()
+        '???'
+        #self.__shiftCurveCursor(True)
+
+        #plot.setToolTip('!Crap!')
+        self._last_mouse_glob = None
+        self._last_mouse_loc = None
+
+    def event(self, event):
+        if event.type() == QtCore.QEvent.User:
+            self.__showCursor(True)
+            return True
+        return QtCore.QObject.event(self, event)
+
+    def eventFilter(self, object, event):
+        #if event.type() == QtCore.QEvent.MouseMove:
+            #self.__move(event.pos())
+            #print(f'mouse -- {event, event.pos()}')
+            #bp()
+            #self.__plot.setToolTip(f'mouse -- {event, event.pos()}')
+            #return True
+            #return False
+        if event.type() == QtCore.QEvent.ToolTip:
+            self._last_mouse_glob = event.globalPos()
+            self._last_mouse_loc = event.pos()
+            fraction = self._last_mouse_loc.x() / self.__plot.geometry().width()
+            #bp()
+            #self.__plot.setToolTip(f'mouse -- {event, event.pos()}')
+            ttt = _get_top_proc(fraction)
+            self.__plot.setToolTip(ttt)
+            #print(f'--updated ToolTip')
+
+            #return True
+        elif event.type() == QtCore.QEvent.Paint:
+            #bp()
+            if type(self.__plot.toolTip()) is str:
+              #self.__plot.setToolTip(ttt)
+              #self.event(QtCore.QEvent(QtCore.QEvent.ToolTipChange))
+              #self.event(QtCore.QEvent(QtCore.QEvent.ToolTip))
+              #print(f'painting...: {self.__plot.toolTip()}')
+              #self.__plot.setToolTip(ttt)
+              if self._last_mouse_glob:
+                fraction = self._last_mouse_loc.x() / self.__plot.geometry().width()
+                ttt = _get_top_proc(fraction)
+                QtWidgets.QToolTip.showText(self._last_mouse_glob, ttt)
+            #return True
+        elif event.type() == QtCore.QEvent.Leave:
+          self._last_mouse_glob = None
+          self._last_mouse_loc = None
+
+        else:
+            #print(f'-------other ev: {event, event.type(), dir(event)}')
+            print(f'-------other ev: {event, event.type()}')
+        return False
+
+    def __showCursor(self, showIt):
+        curve = self.__selectedCurve
+        if not curve:
+            return
+        symbol = curve.symbol()
+        brush = symbol.brush()
+        if showIt:
+            symbol.setBrush(symbol.brush().color().darker(180))
+        curve.directPaint(self.__selectedPoint, self.__selectedPoint)
+        if showIt:
+            symbol.setBrush(brush)
+
+    def __shiftCurveCursor(self, up):
+        curves = [
+            curve for curve in self.__plot.itemList() if isinstance(curve, QwtPlotCurve)
+        ]
+        if not curves:
+            return
+        if self.__selectedCurve in curves:
+            index = curves.index(self.__selectedCurve)
+            if up:
+                index += 1
+            else:
+                index -= 1
+            # keep index within [0, len(curves))
+            index += len(curves)
+            index %= len(curves)
+        else:
+            index = 0
+        self.__showCursor(False)
+        self.__selectedPoint = 0
+        self.__selectedCurve = curves[index]
+        self.__showCursor(True)
+
+_cpu_hist_picker = None
+
+def _on_hover(*args, **vargs):
+  print(f'Hover? :{args, "|_____|", vargs}')
+
 def setFontSize(fontSize):
   global g_settings
   g_settings["fontSize"] = fontSize
@@ -184,20 +323,20 @@ def loadSettings():
   global g_settings
   settingsPath = os.path.expanduser("~/.procexp/settings")
   if os.path.exists(settingsPath):
-    f = file(settingsPath,"rb")
-    settingsObj = configobj.ConfigObj(infile=f)
+    with open(settingsPath,"rb") as f:
+      settingsObj = configobj.ConfigObj(infile=f)
     g_settings=settingsObj.dict()
-    
+
   #load default settings for undefined settings
   for item in g_defaultSettings:
     if item in g_settings.keys():
       pass
     else:
       g_settings[item] = g_defaultSettings[item]
-    
+
   fontsize = int(g_settings["fontSize"])
   setFontSize(fontsize)
-  
+
   #set the columnwidths
   for headerSection in range(g_mainUi.processTreeWidget.header().count()):
     try:
@@ -205,19 +344,19 @@ def loadSettings():
     except:
       width = 150
     g_mainUi.processTreeWidget.header().resizeSection(headerSection,width)
-    
+
   #load default settings for undefined settings
   for item in g_defaultSettings:
     if item in g_settings.keys():
       pass
     else:
       g_settings[item] = g_defaultSettings[item]
-      
+
   global g_cpuUsageHistory
   global g_cpuUsageSystemHistory
   global g_cpuUsageIoWaitHistory
   global g_cpuUsageIrqHistory
-  
+
   g_cpuUsageHistory = [0] * int(g_settings["historySampleCount"])
   g_cpuUsageSystemHistory = [0] * int(g_settings["historySampleCount"])
   g_cpuUsageIoWaitHistory = [0] * int(g_settings["historySampleCount"])
@@ -231,14 +370,13 @@ def saveSettings():
   for headerSection in range(g_mainUi.processTreeWidget.header().count()):
     widths.append(g_mainUi.processTreeWidget.header().sectionSize(headerSection))
   g_settings["columnWidths"] = widths
-  
+
   settingsPath = os.path.expanduser("~/.procexp")
   if not(os.path.exists(settingsPath)):
     os.makedirs(settingsPath)
-  f = file(settingsPath + "/settings","wb")
-  cfg = configobj.ConfigObj(g_settings)
-  cfg.write(f)
-  f.close()
+  with open(settingsPath + "/settings","wb") as f:
+    cfg = configobj.ConfigObj(g_settings)
+    cfg.write(f)
 
 def onContextMenu(point):
   global g_mainUi
@@ -255,14 +393,14 @@ def onHeaderContextMenu(point):
   selectedItem = menu.exec_(g_mainUi.processTreeWidget.mapToGlobal(point))
   if selectedItem is not None:
     g_mainUi.processTreeWidget.setColumnHidden(selectedItem.data().toInt()[0], not selectedItem.isChecked())
-  
+
 def prepareUI(mainUi):
   """ prepare the main UI, setup plots and menu triggers
   """
   global g_timer
-  
+
   mainUi.processTreeWidget.setColumnCount(len(g_treeViewcolumns))
-  
+
   mainUi.processTreeWidget.setHeaderLabels(g_treeViewcolumns)
   mainUi.processTreeWidget.header().setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
   mainUi.processTreeWidget.header().customContextMenuRequested.connect(onHeaderContextMenu)
@@ -285,35 +423,38 @@ def prepareUI(mainUi):
   # QtCore.QObject.connect(mainUi.menuView, QtCore.SIGNAL('triggered(QAction*)'), performMenuAction)
   mainUi.menuHelp.triggered.connect(performMenuAction)
   # QtCore.QObject.connect(mainUi.menuHelp, QtCore.SIGNAL('triggered(QAction*)'), performMenuAction)
-  
+
   #prepare the plot
   global g_curveCpuHist
   global g_curveCpuSystemHist
   global g_curveIoWaitHist
   global g_curveIrqHist
   global g_curveCpuPlotGrid
-  
+
   g_curveCpuHist = plotobjects.niceCurve("CPU History",
-                           1 , QtGui.QColor(0,255,0),QtGui.QColor(0,170,0), 
+                           1 , QtGui.QColor(0,255,0),QtGui.QColor(0,170,0),
                            mainUi.qwtPlotOverallCpuHist)
-  
+
   g_curveCpuSystemHist = plotobjects.niceCurve("CPU Kernel History",
-                           1, QtGui.QColor(255,0,0),QtGui.QColor(170,0,0), 
+                           1, QtGui.QColor(255,0,0),QtGui.QColor(170,0,0),
                            mainUi.qwtPlotOverallCpuHist)
-                           
+
   g_curveIoWaitHist = plotobjects.niceCurve("CPU IO wait history",
-                           1, QtGui.QColor(0,0,255),QtGui.QColor(0,0,127), 
+                           1, QtGui.QColor(0,0,255),QtGui.QColor(0,0,127),
                            mainUi.qwtPlotOverallCpuHist)
-  
+
   g_curveIrqHist = plotobjects.niceCurve("CPU irq history",
-                           1, QtGui.QColor(0,255,255),QtGui.QColor(0,127,127), 
+                           1, QtGui.QColor(0,255,255),QtGui.QColor(0,127,127),
                            mainUi.qwtPlotOverallCpuHist)
+
+  '!!! MY'
+  _cpu_hist_picker = CanvasPicker(mainUi.qwtPlotOverallCpuHist)
 
   scale = plotobjects.scaleObject()
   scale.min = 0
   scale.max = 100
   _ = plotobjects.procExpPlot(mainUi.qwtPlotOverallCpuHist, scale, hasGrid=False)
-  
+
 def clearTree():
   """ clear the tree of processes.
   """
@@ -322,13 +463,13 @@ def clearTree():
   global g_toplevelItems
   global g_greenTopLevelItems
   global g_redTopLevelItems
-  
+
   g_mainUi.processTreeWidget.clear()
   g_treeProcesses = {}
   g_toplevelItems = {}
   g_greenTopLevelItems = {}
   g_redTopLevelItems = {}
-  
+
 def killProcessTree(proc, procList):
   """ Kill a tree of processes, the hard way
   """
@@ -342,27 +483,27 @@ def killChildsTree(proc, procList):
     if procList[aproc]["PPID"] == proc:
       killChildsTree(aproc, procList)
       utils.procutils.killProcess(aproc)
-     
+
 def addProcessAndParents(proc, procList):
   """ adds a process and its parents to the tree of processes
   """
   global g_mainUi
-  
+
   if proc in g_treeProcesses.keys(): #process already exists, do nothing
     return g_treeProcesses[proc]
-    
+
   g_treeProcesses[proc] = QtWidgets.QTreeWidgetItem([])
   g_greenTopLevelItems[proc] = g_treeProcesses[proc]
-  
+
   if procList[proc]["PPID"] > 0 and (procList[proc]["PPID"] in procList.keys()): #process has a parent
     parent = addProcessAndParents(procList[proc]["PPID"],procList)
     parent.addChild(g_treeProcesses[proc])
   else: #process has no parent, thus it is toplevel. add it to the treewidget
     g_mainUi.processTreeWidget.addTopLevelItem(g_treeProcesses[proc])
     g_toplevelItems[proc] = g_treeProcesses[proc]
-  
+
   return g_treeProcesses[proc]
-  
+
 def delChild(item, childtodelete):
   """ Delete child, search recursively
   """
@@ -374,7 +515,7 @@ def delChild(item, childtodelete):
           item.takeChild(index)
         else:
           delChild(thechild, childtodelete)
-          
+
 def expandChilds(parent):
   """ expand all childs of given parent
   """
@@ -403,20 +544,22 @@ def updateUI():
     global g_treeProcesses, g_greenTopLevelItems, g_redTopLevelItems
     global g_mainUi
     global g_firstUpdate
-    
+
     if g_mainUi.freezeCheckBox.isChecked():
+      '!!! BP'
+      bp()
       return
-    
+
     g_reader.doReadProcessInfo()
     g_procList, closedProc, newProc = g_reader.getProcessInfo()
 
     #color all green processes with default background
-    defaultBgColor = app.palette().color(QtGui.QPalette.Base)  
+    defaultBgColor = app.palette().color(QtGui.QPalette.Base)
     for proc in g_greenTopLevelItems:
       for column in range(g_greenTopLevelItems[proc].columnCount()):
         g_greenTopLevelItems[proc].setBackground(column, defaultBgColor)
     g_greenTopLevelItems = {}
-   
+
     #delete all red widgetItems
     for proc in g_redTopLevelItems:
       for topLevelIndex in range(g_mainUi.processTreeWidget.topLevelItemCount()):
@@ -424,9 +567,9 @@ def updateUI():
         delChild(topLevelItem, g_redTopLevelItems[proc])
         if topLevelItem == g_redTopLevelItems[proc]:
           g_mainUi.processTreeWidget.takeTopLevelItem(topLevelIndex)
-          
+
     g_redTopLevelItems = {}
-    
+
     #create new items and mark items to be deleted red
     #draw tree hierarchy of processes
     for proc in newProc:
@@ -443,22 +586,22 @@ def updateUI():
               parentItem.takeChild(idx)
           g_mainUi.processTreeWidget.addTopLevelItem(g_treeProcesses[proc])
 
-    #copy processed to be deleted to the red list      
+    #copy processed to be deleted to the red list
     for proc in closedProc:
       try:
         g_redTopLevelItems[proc] = g_treeProcesses[proc]
       except KeyError:
         pass
-     
+
     #color all deleted processed red
     for proc in g_redTopLevelItems:
       try:
         for column in range(g_redTopLevelItems[proc].columnCount()):
           g_redTopLevelItems[proc].setBackground(column, QtGui.QColor(255,0,0))
       except RuntimeError:
-        pass 
-    
-    #update status information about the processes  
+        pass
+
+    #update status information about the processes
     try:
       for proc in g_procList:
         g_treeProcesses[proc].setData(0, 0, g_procList[proc]["name"])
@@ -484,37 +627,37 @@ def updateUI():
         item = g_greenTopLevelItems[proc]
         for column in range(item.columnCount()):
           item.setBackground(column, QtGui.QColor(0,255,0))
-      
+
     if (len(closedProc) > 0) or (len(newProc) > 0):
       expandAll()
-    
+
     for ui in g_singleProcessUiList:
       g_singleProcessUiList[ui].update()
-      
+
     #update CPU plots
     g_systemOverviewUi.update()
-    
+
     #network plots
     g_networkOverviewUi.update()
-      
+
     #update the cpu graph
     global g_cpuUsageHistory
     global g_cpuUsageSystemHistory
     global g_cpuUsageIoWaitHistory
     global g_cpuUsageIrqHistory
-    
+
     global g_curveCpuHist
     global g_curveCpuSystemHist
     global g_curveIrqHist
     global g_curveIoWaitHist
     global g_curveCpuPlotGrid
-    
+
     g_cpuUsageHistory.append(g_reader.overallUserCpuUsage()+
                            g_reader.overallSystemCpuUsage()+
                            g_reader.overallIoWaitCpuUsage()+
                            g_reader.overallIrqCpuUsage())
     g_cpuUsageHistory = g_cpuUsageHistory[1:]
-    
+
     g_cpuUsageSystemHistory.append(g_reader.overallSystemCpuUsage()+
                                  g_reader.overallIoWaitCpuUsage()+
                                  g_reader.overallIrqCpuUsage())
@@ -551,7 +694,7 @@ def updateUI():
     import traceback
     utils.procutils.log("Unhandled exception:%s" %traceback.format_exc())
     print(traceback.format_exc())
-  
+
   g_firstUpdate = False
 
 if __name__ == "__main__":
@@ -566,19 +709,30 @@ if __name__ == "__main__":
   g_mainWindow.show()
   app.processEvents()
 
-  rootproxy.start(asRoot=True)
+  rootproxy.start(asRoot=False)
   if not rootproxy.isStarted():
     messageui.doMessageWindow("Process explorer has no root privileges. TCPIP traffic monitoring (using tcpdump) will not be available.")
 
-  g_reader = procreader.reader.procreader(int(g_settings["updateTimer"]), int(g_settings["historySampleCount"]))
+  g_reader = procreader.reader.procreader(
+      int(g_settings["updateTimer"]),
+      int(g_settings["historySampleCount"]),
+  )
 
   g_timer.start(int(g_settings["updateTimer"]))
 
   if g_onlyUser:
     g_reader.setFilterUID(os.geteuid())
 
-  g_systemOverviewUi = systemoverview.systemOverviewUi(g_reader.getCpuCount(), int(g_settings["historySampleCount"]), g_reader)
-  g_networkOverviewUi = networkoverview.networkOverviewUi(g_reader.getNetworkCards(), int(g_settings["historySampleCount"]), g_reader)
+  g_systemOverviewUi = systemoverview.systemOverviewUi(
+      g_reader.getCpuCount(),
+      int(g_settings["historySampleCount"]),
+      g_reader,
+  )
+  g_networkOverviewUi = networkoverview.networkOverviewUi(
+      g_reader.getNetworkCards(),
+      int(g_settings["historySampleCount"]),
+      g_reader,
+  )
 
   g_systemOverviewUi.setFontSize(int(g_settings["fontSize"]))
   g_networkOverviewUi.setFontSize(int(g_settings["fontSize"]))

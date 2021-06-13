@@ -20,7 +20,9 @@
 # Display process properties and statistics of a single process
 #
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
-from PyQt5 import Qwt
+'!!! ERR'
+#from PyQt5 import Qwt
+import qwt
 import subprocess
 import utils.procutils
 import procreader.tcpip_stat as tcpip_stat
@@ -29,7 +31,7 @@ import os
 import struct
 import socket
 
-UNKNOWN = "---" 
+UNKNOWN = "---"
 
 tcpstates = [\
 "UNUSED",\
@@ -46,7 +48,7 @@ tcpstates = [\
 "TCP_CLOSING"]
 
 
-      
+
 class singleUi(object):
   def __init__(self, proc, cmdLine, name, reader, depth):
     self.__depth__ = depth
@@ -70,79 +72,79 @@ class singleUi(object):
 
     #-------- top plot CPU usage-------------------------------------------------------------------
     #Curves for CPU usage
-    self.__curveCpuHist__ = Qwt.QwtPlotCurve("CPU History")
+    self.__curveCpuHist__ = qwt.QwtPlotCurve("CPU History")
     pen = QtGui.QPen(QtGui.QColor(0,255,0))
     pen.setWidth(2)
-    
+
     #work around to get better plotting.
-    self.__curveCpuHistExt__ = Qwt.QwtPlotCurve("CPU History extra")
+    self.__curveCpuHistExt__ = qwt.QwtPlotCurve("CPU History extra")
     self.__curveCpuHistExt__.setPen(QtGui.QPen(QtGui.QColor(0,255,0)))
     self.__curveCpuHistExt__.attach(self.__procDetails__.qwtPlotCpuHist)
-    
-    
+
+
     self.__curveCpuHist__.setPen(pen)
     self.__curveCpuHist__.setBrush(QtGui.QColor(0,170,0))
     self.__curveCpuHist__.attach(self.__procDetails__.qwtPlotCpuHist)
-    
+
     #Curve for kernel usage
-    self.__curveCpuKernelHist__ = Qwt.QwtPlotCurve("CPU Kernel History")
+    self.__curveCpuKernelHist__ = qwt.QwtPlotCurve("CPU Kernel History")
     pen = QtGui.QPen(QtGui.QColor(255,0,0))
     pen.setWidth(1)
     self.__curveCpuKernelHist__.setPen(pen)
     self.__curveCpuKernelHist__.setBrush(QtGui.QColor(170,0,0))
     self.__curveCpuKernelHist__.attach(self.__procDetails__.qwtPlotCpuHist)
-    
+
     #work around to get better plotting.
-    self.__curveCpuKernelHistExt__ = Qwt.QwtPlotCurve("CPU Kernel History extra")
+    self.__curveCpuKernelHistExt__ = qwt.QwtPlotCurve("CPU Kernel History extra")
     self.__curveCpuKernelHistExt__.setPen(QtGui.QPen(QtGui.QColor(255,0,0)))
     self.__curveCpuKernelHistExt__.attach(self.__procDetails__.qwtPlotCpuHist)
-    
-    
-    #self.__procDetails__.qwtPlotCpuHist.setAxisScale(0,0,self.__depth__,10)    
-    
-    self.__curveCpuPlotGrid__ = Qwt.QwtPlotGrid()
+
+
+    #self.__procDetails__.qwtPlotCpuHist.setAxisScale(0,0,self.__depth__,10)
+
+    self.__curveCpuPlotGrid__ = qwt.QwtPlotGrid()
     self.__curveCpuPlotGrid__.setMajorPen(QtGui.QPen(QtGui.QColor(0,100,0), 0, QtCore.Qt.SolidLine))
     self.__curveCpuPlotGrid__.setMinorPen(QtGui.QPen(QtGui.QColor(0,100,0), 0, QtCore.Qt.SolidLine))
     self.__curveCpuPlotGrid__.enableXMin(True)
     self.__curveCpuPlotGrid__.attach(self.__procDetails__.qwtPlotCpuHist)
     #----------------------------------------------------------------------------------------------
-    
+
     #-------- Middle plot memory usage-------------------------------------------------------------
     #Curve for memory usage
-    self.__curveRssHist__ = Qwt.QwtPlotCurve("Rss History")
+    self.__curveRssHist__ = qwt.QwtPlotCurve("Rss History")
     pen = QtGui.QPen(QtGui.QColor(248,248,0))
     pen.setWidth(1)
     self.__curveRssHist__.setPen(pen)
     self.__curveRssHist__.setBrush(QtGui.QColor(190,190,0))
     self.__curveRssHist__.attach(self.__procDetails__.qwtPlotRssHist)
-    
-    self.__curveRssHistExt__ = Qwt.QwtPlotCurve("Rss extra")
+
+    self.__curveRssHistExt__ = qwt.QwtPlotCurve("Rss extra")
     self.__curveRssHistExt__.setPen(QtGui.QPen(QtGui.QColor(248,248,0)))
     self.__curveRssHistExt__.attach(self.__procDetails__.qwtPlotRssHist)
-    
+
     #self.__procDetails__.qwtPlotRssHgetThreist.setAxisScale(0,0,100,10)
-    self.__RssPlotGrid__ = Qwt.QwtPlotGrid()
+    self.__RssPlotGrid__ = qwt.QwtPlotGrid()
     self.__RssPlotGrid__.setMajorPen(QtGui.QPen(QtGui.QColor(0,100,0), 0, QtCore.Qt.SolidLine))
     self.__RssPlotGrid__.setMinorPen(QtGui.QPen(QtGui.QColor(0,100,0), 0, QtCore.Qt.SolidLine))
     self.__RssPlotGrid__.enableXMin(True)
     self.__RssPlotGrid__.attach(self.__procDetails__.qwtPlotRssHist)
     #----------------------------------------------------------------------------------------------
-    
+
     #-------- Bottom plot IO usage ----------------------------------------------------------------
     #Curve for memory usage
-    self.__curveIOHist__ = Qwt.QwtPlotCurve("IO History")
+    self.__curveIOHist__ = qwt.QwtPlotCurve("IO History")
     pen = QtGui.QPen(QtGui.QColor(0,214,214))
     pen.setWidth(1)
     self.__curveIOHist__.setPen(pen)
     self.__curveIOHist__.setBrush(QtGui.QColor(0,150,150))
     self.__curveIOHist__.attach(self.__procDetails__.qwtPlotIoHist)
-    
-    self.__curveIOHistExt__ = Qwt.QwtPlotCurve("IO History extra")
+
+    self.__curveIOHistExt__ = qwt.QwtPlotCurve("IO History extra")
     self.__curveIOHistExt__.setPen(QtGui.QPen(QtGui.QColor(0,214,214)))
     self.__curveIOHistExt__.attach(self.__procDetails__.qwtPlotIoHist)
-    
+
     #self.__procDetails__.qwtPlotIoHist.setAxisScale(0,0,100,10)
-    self.__IOPlotGrid__ = Qwt.QwtPlotGrid()
+    self.__IOPlotGrid__ = qwt.QwtPlotGrid()
     self.__IOPlotGrid__.setMajorPen(QtGui.QPen(QtGui.QColor(0,100,0), 0, QtCore.Qt.SolidLine))
     self.__IOPlotGrid__.setMinorPen(QtGui.QPen(QtGui.QColor(0,100,0), 0, QtCore.Qt.SolidLine))
     self.__IOPlotGrid__.enableXMin(True)
@@ -150,25 +152,25 @@ class singleUi(object):
     #----------------------------------------------------------------------------------------------
 
     #-------- TCP IO usage ----------------------------------------------------------------
-    self.__curveTcpipHist__ = Qwt.QwtPlotCurve("TCPIP History")
+    self.__curveTcpipHist__ = qwt.QwtPlotCurve("TCPIP History")
     pen = QtGui.QPen(QtGui.QColor(0,214,214))
     pen.setWidth(1)
     self.__curveTcpipHist__.setPen(pen)
     self.__curveTcpipHist__.setBrush(QtGui.QColor(196,60,210))
     self.__curveTcpipHist__.attach(self.__procDetails__.qwtPlotTcpipHist)
-    
-    self.__curveTcpipHistExt__ = Qwt.QwtPlotCurve("TCPIP History extra")
+
+    self.__curveTcpipHistExt__ = qwt.QwtPlotCurve("TCPIP History extra")
     self.__curveTcpipHistExt__.setPen(QtGui.QPen(QtGui.QColor(215,124,224)))
     self.__curveTcpipHistExt__.attach(self.__procDetails__.qwtPlotTcpipHist)
-    
+
     #self.__procDetails__.qwtPlotIoHist.setAxisScale(0,0,100,10)
-    self.__TcpipPlotGrid__ = Qwt.QwtPlotGrid()
+    self.__TcpipPlotGrid__ = qwt.QwtPlotGrid()
     self.__TcpipPlotGrid__.setMajorPen(QtGui.QPen(QtGui.QColor(0,100,0), 0, QtCore.Qt.SolidLine))
     self.__TcpipPlotGrid__.setMinorPen(QtGui.QPen(QtGui.QColor(0,100,0), 0, QtCore.Qt.SolidLine))
     self.__TcpipPlotGrid__.enableXMin(True)
     self.__TcpipPlotGrid__.attach(self.__procDetails__.qwtPlotTcpipHist)
     #----------------------------------------------------------------------------------------------
-    
+
     #  all plots ----------------------------------------------------------------------------------
     self.__procDetails__.qwtPlotCpuHist.setCanvasBackground(QtGui.QColor(0,0,0))
     self.__procDetails__.qwtPlotRssHist.setCanvasBackground(QtGui.QColor(0,0,0))
@@ -180,31 +182,31 @@ class singleUi(object):
     self.__procDetails__.qwtPlotRssHist.enableAxis(2, False )
     self.__procDetails__.qwtPlotIoHist.enableAxis(0, False )
     self.__procDetails__.qwtPlotIoHist.enableAxis(2, False )
-    self.__procDetails__.qwtPlotTcpipHist.enableAxis(0, False )    
+    self.__procDetails__.qwtPlotTcpipHist.enableAxis(0, False )
     self.__procDetails__.qwtPlotTcpipHist.enableAxis(2, False )
     #----------------------------------------------------------------------------------------------
     self._availableLabel = QtWidgets.QLabel("                                                                                ", parent=self.__procDetails__.qwtPlotTcpipHist )
-      
+
     font = QtGui.QFont("Arial", pointSize=12)
     self._availableLabel.setFont(font)
     self._availableLabel.setStyleSheet("QLabel { color : grey; }");
     self._availableLabel.show()
 
     self.__procDetails__.pushButtonOK.clicked.connect(self.__onClose__)
-  
+
     # Fill some field only at construction time
     self.__procDetails__.filterEdit.textEdited.connect(self.__onFilterTextEdit__)
-    
+
     self.__lddoutput__ = None
     self._tcpstat = tcpip_stat.tcpStat()
     self._tcpstat.start()
     self.update_sockets()
 
-    
+
   def __startTcpStat__(self):
     """start tcpip throughput measurement"""
     self._availableLabel.setText("  No TCP-IP traffic detected yet.")
-    
+
   def __del__(self):
     try:
       if self.__tcpStat__ != None:
@@ -238,7 +240,7 @@ class singleUi(object):
     self.__dialog__.setVisible(False)
   def makeVisible(self):
     self.__dialog__.setVisible(True)
-    
+
   def closeWindow(self):
     self.__dialog__.close()
 
@@ -272,32 +274,32 @@ class singleUi(object):
         iptoaddrdec = self.ipv6addr(iptoaddr)
       else:
         iptoaddrdec   = str(int(iptoaddr[6:8],16)) + "." + str(int(iptoaddr[4:6],16)) + "." + str(int(iptoaddr[2:4],16)) + "." + str(int(iptoaddr[0:2],16))
-      
+
       allConn.append(((ipfromaddrdec,int(ipfromport,16)),(iptoaddrdec,int(iptoport,16))))
-      
+
       key1 = "%s.%s > %s.%s" %(ipfromaddrdec, int(ipfromport,16), iptoaddrdec, int(iptoport,16))
       bytesSentPerSecond=0
       bytesReceivedPerSecond=0
       with self._tcpstat.connectionsLock:
         if key1 in self._tcpstat.connections():
           bytesSentPerSecond=self._tcpstat.connections()[key1][tcpip_stat.BYTESPERSECONDIDX]
-          nftotalBytesPerSecond+=bytesSentPerSecond  
+          nftotalBytesPerSecond+=bytesSentPerSecond
       key2 = "%s.%s > %s.%s" %(iptoaddrdec, int(iptoport,16), ipfromaddrdec, int(ipfromport,16))
       with self._tcpstat.connectionsLock:
         if key2 in self._tcpstat.connections():
-          bytesReceivedPerSecond=self._tcpstat.connections()[key2][tcpip_stat.BYTESPERSECONDIDX]    
+          bytesReceivedPerSecond=self._tcpstat.connections()[key2][tcpip_stat.BYTESPERSECONDIDX]
           nftotalBytesPerSecond+=bytesReceivedPerSecond
-      
+
       state = tcpstates[int(connections[conn][3],16)]
-      
+
       ipfromResolved = utils.procutils.resolveIP(ipfromaddrdec)
       iptoResolved = utils.procutils.resolveIP(iptoaddrdec)
-    
+
       text.append(("TCPIP", ipfromResolved, str(int(ipfromport,16)), iptoResolved, str(int(iptoport,16)), state, \
                    utils.procutils.humanReadable(bytesSentPerSecond)+"/s", utils.procutils.humanReadable(bytesReceivedPerSecond)+"/s"))
-      
+
     if nftotalBytesPerSecond > 0:
-      self._availableLabel.hide()  
+      self._availableLabel.hide()
     self.__TCPHist__.append(nftotalBytesPerSecond)
     self.__TCPHist__ = self.__TCPHist__[1:]
     for conn in udp:
@@ -306,18 +308,18 @@ class singleUi(object):
       ipfromaddr = ipfrom[0]
       ipfromaddrdec = str(int(ipfromaddr[6:8],16)) + "." + str(int(ipfromaddr[4:6],16)) + "." + str(int(ipfromaddr[2:4],16)) + "." + str(int(ipfromaddr[0:2],16))
       text.append(("UDP", ipfromaddrdec, str(int(ipfromport,16)), "-", "-", "-"))
-    
+
     self.__procDetails__.tcpipTableWidget.clearContents()
     fontInfo = QtGui.QFontInfo(self.__procDetails__.tcpipTableWidget.viewOptions().font)
     height = int(fontInfo.pixelSize()*1.2+0.5)
     row=0
-    for line in text:      
+    for line in text:
       if self.__procDetails__.tcpipTableWidget.rowCount() <= row:
         self.__procDetails__.tcpipTableWidget.insertRow(row)
       if height != -1:
         self.__procDetails__.tcpipTableWidget.setRowHeight(row, height)
       self.__procDetails__.tcpipTableWidget.setVerticalHeaderItem (row, QtWidgets.QTableWidgetItem(""))
-      
+
       itemProto = QtWidgets.QTableWidgetItem(line[0])
       itemFrom = QtWidgets.QTableWidgetItem(line[1])
       itemFromPort = QtWidgets.QTableWidgetItem(line[2])
@@ -327,7 +329,7 @@ class singleUi(object):
       if len(line) > 6:
         bytesSentSec = QtWidgets.QTableWidgetItem(str(line[6]))
         bytesReceivedSec = QtWidgets.QTableWidgetItem(str(line[7]))
-        
+
       self.__procDetails__.tcpipTableWidget.setItem(row, 0, itemProto)
       self.__procDetails__.tcpipTableWidget.setItem(row, 1, itemFrom)
       self.__procDetails__.tcpipTableWidget.setItem(row, 2, itemFromPort)
@@ -337,9 +339,9 @@ class singleUi(object):
       if len(line) > 6:
         self.__procDetails__.tcpipTableWidget.setItem(row, 6, bytesSentSec)
         self.__procDetails__.tcpipTableWidget.setItem(row, 7, bytesReceivedSec)
-      
+
       row += 1
-    
+
   def update(self):
     if not self._tcpstat.started():
       self._availableLabel.setText("  tcpdump not running (no root privileges?).")
@@ -353,15 +355,15 @@ class singleUi(object):
         if self.__tcpStat__ != None:
           self.__tcpStat__.doStop()
           self.__tcpStat__.join()
-        
+
       else:
         self.__updateEnvironmentDisplay()
         data = self.__reader__.getProcessCpuUsageHistory(self.__proc__)
         actual = data[-1:][0]
         self.__curveCpuHist__.setSamples(self.__y__, data)
         self.__curveCpuHistExt__.setSamples(self.__y__, data)
-        
-        
+
+
         data = self.__reader__.getProcessCpuUsageKernelHistory(self.__proc__)
         self.__curveCpuKernelHist__.setSamples(self.__y__, data)
         self.__curveCpuKernelHistExt__.setSamples(self.__y__, data)
@@ -369,7 +371,7 @@ class singleUi(object):
         self.__procDetails__.qwtPlotCpuHist.replot()
         self.__procDetails__.labelActualCpuUsage.setText(str(actual) + "%")
         self.__procDetails__.actualCpu.setValue(actual)
-        
+
         data = self.__reader__.getProcessRssUsageHistory(self.__proc__)
         actual = data[-1:][0]
         self.__curveRssHist__.setSamples(self.__y__, data)
@@ -377,7 +379,7 @@ class singleUi(object):
         self.__procDetails__.qwtPlotRssHist.replot()
         self.__procDetails__.labelActualRss.setText(str(actual) + " kB")
         self.__procDetails__.actualRss.setValue(actual)
-        
+
         data = self.__reader__.getIOHistory(self.__proc__)
         actual = data[-1:][0]
         self.__curveIOHist__.setSamples(self.__y__, data)
@@ -385,7 +387,7 @@ class singleUi(object):
         self.__procDetails__.qwtPlotIoHist.replot()
         self.__procDetails__.labelActualIo.setText(str(actual) + " kB/s")
         self.__procDetails__.actualIo.setValue(actual)
-        
+
         self.update_sockets()
         data = self.__TCPHist__
         try:
@@ -397,22 +399,22 @@ class singleUi(object):
         self.__procDetails__.qwtPlotTcpipHist.replot()
         self.__procDetails__.labelActualTcpip.setText(str(actual) + " kB/s")
         self.__procDetails__.actualTcpip.setValue(actual)
-        
+
         self.__procDetails__.imagePwdLabel.setText(self.__reader__.getcwd(self.__proc__))
         if str(self.__procDetails__.imageCommandLineLabel.text()) == "":
           cmdLine = self.__reader__.getcmdline(self.__proc__)
           if len(cmdLine) > 80:
-            cmdLine = cmdLine[:80] + "..." 
+            cmdLine = cmdLine[:80] + "..."
           self.__procDetails__.imageCommandLineLabel.setText(cmdLine)
           self.__procDetails__.imagePathLabel.setText(self.__reader__.getexe(self.__proc__))
           self.__procDetails__.imagePidLabel.setText(str(self.__proc__))
           self.__procDetails__.imageStartedLabel.setText(self.__reader__.getstartedtime(self.__proc__))
           self.__procDetails__.imagePPidLabel.setText(self.__reader__.getppid(self.__proc__))
-        
+
         #update ldd output. Do this here: then it happens only when the user wants to see it
         #by opening a process properties window
-        
-        
+
+
         if self.__lddoutput__ is None:
           try:
             exepath = self.__reader__.getexe(self.__proc__)
@@ -425,25 +427,25 @@ class singleUi(object):
               self.__lddoutput__ = output[0]
               self.__lddoutput__ = self.__lddoutput__.replace("\t","")
             self.__procDetails__.libraryTextEdit.setText(self.__lddoutput__)
-            
+
           except:
             self.__lddoutput__  = "--"
-        
+
         #thread information
         threadsInfo = self.__reader__.getThreads(self.__proc__)
         self.__procDetails__.threadsTableWidget.clearContents()
-        
+
         fontInfo = QtGui.QFontInfo(self.__procDetails__.threadsTableWidget.viewOptions().font)
         height = int(fontInfo.pixelSize()*1.2+0.5)
-        
+
         row=0
-        for t in threadsInfo:      
+        for t in threadsInfo:
           if self.__procDetails__.threadsTableWidget.rowCount() <= row:
             self.__procDetails__.threadsTableWidget.insertRow(row)
           if height != -1:
             self.__procDetails__.threadsTableWidget.setRowHeight(row, height)
           self.__procDetails__.threadsTableWidget.setVerticalHeaderItem (row, QtWidgets.QTableWidgetItem(""))
-          
+
           itemTid = QtWidgets.QTableWidgetItem(str(t))
           itemWchan = QtWidgets.QTableWidgetItem(str(threadsInfo[t][0]))
           itemWakeups = QtWidgets.QTableWidgetItem(str(threadsInfo[t][1]))
@@ -451,7 +453,7 @@ class singleUi(object):
           self.__procDetails__.threadsTableWidget.setItem(row, 1, itemWchan)
           self.__procDetails__.threadsTableWidget.setItem(row, 2, itemWakeups)
           row += 1
-          
+
         #show open files info
         self.__procDetails__.filesTableWidget.clearContents()
         fontInfo = QtGui.QFontInfo(self.__procDetails__.filesTableWidget.viewOptions().font)
@@ -464,7 +466,7 @@ class singleUi(object):
           if height != -1:
             self.__procDetails__.filesTableWidget.setRowHeight(row, height)
           self.__procDetails__.filesTableWidget.setVerticalHeaderItem (row, QtWidgets.QTableWidgetItem(""))
-          
+
           itemFd = QtWidgets.QTableWidgetItem(str(fd))
           itemPath = QtWidgets.QTableWidgetItem(str(fileInfo[str(fd)]["path"]))
           itemPos = QtWidgets.QTableWidgetItem(str(fileInfo[str(fd)]["fdinfo"].split("\n")[0].split("\t")[1]))

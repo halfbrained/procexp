@@ -22,59 +22,63 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
-import PyQt5.Qwt as Qwt
+'!!! ERR'
+# not used?
+#import PyQt5.Qwt as Qwt
 import plotobjects
 import os
 
 class memoryPlotObject(object):
   def __init__(self, plot, depth, reader):
-    self.__curveMemHist__ = plotobjects.niceCurve("Memory History", 
-                             1 ,QtGui.QColor(217,137,123), QtGui.QColor(180,70,50), 
+    self.__curveMemHist__ = plotobjects.niceCurve("Memory History",
+                             1 ,QtGui.QColor(217,137,123), QtGui.QColor(180,70,50),
                              plot)
     self.__depth__ = depth
     self.__reader__ = reader
     self.__first__ = False
     self.__plot__ = plot
     #adapt the memory plot
-    
+
     self.__memoryUsageHistory__ = [0] * int(self.__depth__)
-    
+
   def update(self, values):
+    #print('--update memoryPlotObject')
+
     if self.__first__ == False:
       self.__first__ = True
       scale = plotobjects.scaleObject()
       scale.min = 0
       scale.max = values[0]
       self.__adaptedmemoryplot = plotobjects.procExpPlot(self.__plot__, scale)
-    
+
     self.__memoryUsageHistory__.append(values[0]-values[1])
     self.__memoryUsageHistory__ = self.__memoryUsageHistory__[1:]
     self.__curveMemHist__.setData(range(self.__depth__), self.__memoryUsageHistory__)
     self.__plot__.replot()
-                             
+
 class cpuPlotObject(object):
   def __init__(self, plot, depth, reader, cpu):
-    self.__curveCpuHist__ = plotobjects.niceCurve("CPU History", 
-                             1 , QtGui.QColor(0,255,0),QtGui.QColor(0,170,0), 
+    self.__curveCpuHist__ = plotobjects.niceCurve("CPU History",
+                             1 , QtGui.QColor(0,255,0),QtGui.QColor(0,170,0),
                              plot)
-    
-    self.__curveCpuSystemHist__ = plotobjects.niceCurve("CPU Kernel History", 
-                             1, QtGui.QColor(255,0,0),QtGui.QColor(170,0,0), 
+
+    self.__curveCpuSystemHist__ = plotobjects.niceCurve("CPU Kernel History",
+                             1, QtGui.QColor(255,0,0),QtGui.QColor(170,0,0),
                              plot)
-                             
-    self.__curveIoWaitHist__ = plotobjects.niceCurve("CPU IO wait history", 
-                             1, QtGui.QColor(0,0,255),QtGui.QColor(0,0,127), 
+
+    self.__curveIoWaitHist__ = plotobjects.niceCurve("CPU IO wait history",
+                             1, QtGui.QColor(0,0,255),QtGui.QColor(0,0,127),
                              plot)
-    
-    self.__curveIrqHist__ = plotobjects.niceCurve("CPU irq history", 
-                             1, QtGui.QColor(0,255,255),QtGui.QColor(0,127,127), 
+
+    self.__curveIrqHist__ = plotobjects.niceCurve("CPU irq history",
+                             1, QtGui.QColor(0,255,255),QtGui.QColor(0,127,127),
                              plot)
-    
+
     scale = plotobjects.scaleObject()
     scale.min = 0
     scale.max = 100
 
-    self.__adaptedplot__ = plotobjects.procExpPlot(plot, scale)  
+    self.__adaptedplot__ = plotobjects.procExpPlot(plot, scale)
     self.__plot__ = plot
 
     self.__depth__ = depth
@@ -86,19 +90,21 @@ class cpuPlotObject(object):
     self.__cpuUsageIrqHistory__ = [0] * int(self.__depth__)
 
   def update(self):
+    #print('--update cpuPlotObject')
+
     values = self.__reader__.getSingleCpuUsage(self.__cpu__)
     self.__cpuUsageHistory__.append(values[0]+values[1]+values[2]+values[3])
     self.__cpuUsageHistory__ = self.__cpuUsageHistory__[1:]
-    
-    
+
+
     self.__cpuUsageSystemHistory__.append(values[1]+values[2]+values[3])
     self.__cpuUsageSystemHistory__ = self.__cpuUsageSystemHistory__[1:]
-    
-    
+
+
     self.__cpuUsageIoWaitHistory__.append(values[2]+values[3])
     self.__cpuUsageIoWaitHistory__ = self.__cpuUsageIoWaitHistory__[1:]
-    
-    
+
+
     self.__cpuUsageIrqHistory__.append(values[3])
     self.__cpuUsageIrqHistory__ = self.__cpuUsageIrqHistory__[1:]
 
@@ -107,7 +113,7 @@ class cpuPlotObject(object):
     self.__curveIoWaitHist__.setData(range(self.__depth__), self.__cpuUsageIoWaitHistory__)
     self.__curveIrqHist__.setData(range(self.__depth__), self.__cpuUsageIrqHistory__)
     self.__plot__.replot()
-    
+
 
 class systemOverviewUi(object):
   def __init__(self, cpuCount, depth, reader):
@@ -149,50 +155,52 @@ class systemOverviewUi(object):
     self.__cpuPlotArray__ += [[self.__ui__.qwtPlotCpuHist_30]]
     self.__cpuPlotArray__ += [[self.__ui__.qwtPlotCpuHist_31]]
     self.__cpuPlotArray__ += [[self.__ui__.qwtPlotCpuHist_32]]
-    
-    
+
+
     for cpu in range(32):
       if (cpu + 1) > self.__cpuCount__:
         self.__cpuPlotArray__[cpu][0].setVisible(False)
         self.__cpuPlotArray__[cpu].append(False)
       else:
         self.__cpuPlotArray__[cpu].append(True)
-        
+
       if self.__cpuPlotArray__[cpu][1] == True:
         self.__cpuPlotArray__[cpu].append(cpuPlotObject(self.__cpuPlotArray__[cpu][0],
                                                          self.__depth__,
                                                          self.__reader__,
                                                          cpu))
-                                                         
+
     self.__memPlot__ = memoryPlotObject(self.__ui__.qwtPlotMemoryHist,
                                                          self.__depth__,
                                                          self.__reader__)
   def show(self):
     self.__dialog__.show()
-    self.__dialog__.setVisible(True)    
-  
+    self.__dialog__.setVisible(True)
+
   def close(self):
     self.__dialog__.close()
-    
+
   def setFontSize(self, fontSize):
     font = QtGui.QFont()
     font.setPointSize(fontSize)
     self.__dialog__.setFont(font)
-    
-    
+
+
   def update(self):
+    #print('--update systemOverviewUi')
+
     for plot in range(32):
       if plot+1 <= self.__cpuCount__:
         self.__cpuPlotArray__[plot][2].update()
     memvalues = self.__reader__.getMemoryUsage()
-    
+
     self.__ui__.memUsed.setText(str(memvalues[0]-memvalues[1]))
     self.__ui__.memTotal.setText(str(memvalues[0]))
     self.__ui__.memAvailable.setText(str(memvalues[1]))
     self.__ui__.memBuffers.setText(str(memvalues[2]))
     self.__ui__.memCached.setText(str(memvalues[3]))
     self.__ui__.swapUsed.setText(str(memvalues[4]))
-    
+
     avg = self.__reader__.getLoadAvg()
     self.__ui__.last1minUtil.setText(str(avg[0][0]))
     self.__ui__.last5minUtil.setText(str(avg[0][1]))
@@ -200,4 +208,4 @@ class systemOverviewUi(object):
     self.__ui__.lastpid.setText(str(avg[3]))
     self.__ui__.procs.setText(str(avg[2])+"/"+str(avg[1]))
     self.__memPlot__.update(memvalues)
-    
+
