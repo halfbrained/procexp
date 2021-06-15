@@ -681,16 +681,24 @@ def updateUI():
             except RuntimeError:
                 pass
 
-        #update status information about the processes
+        # update status information about the processes
         try:
             for proc in g_procList:
-                g_treeProcesses[proc].setData(0, 0, g_procList[proc]["name"])
-                g_treeProcesses[proc].setData(1, 0, str(proc))
-                g_treeProcesses[proc].setData(2, 0, g_procList[proc]["cpuUsage"])
-                g_treeProcesses[proc].setData(3, 0, g_procList[proc]["cmdline"])
-                g_treeProcesses[proc].setData(4, 0, g_procList[proc]["uid"])
-                g_treeProcesses[proc].setData(5, 0, g_procList[proc]["wchan"])
-                g_treeProcesses[proc].setData(6, 0, g_procList[proc]["nfThreads"])
+                it = g_treeProcesses[proc]
+                it.setData(0, 0, g_procList[proc]["name"])
+                it.setData(1, 0, str(proc))
+                it.setData(2, 0, g_procList[proc]["cpuUsage"])
+                it.setData(3, 0, g_procList[proc]["cmdline"])
+                it.setData(4, 0, g_procList[proc]["uid"])
+                it.setData(5, 0, g_procList[proc]["wchan"])
+                it.setData(6, 0, g_procList[proc]["nfThreads"])
+
+                # hints for long columns: {"Process","Command Line", "User"} 0,3,4
+                # hints for long columns: {"Process","Command Line", "User"} 0,3,4
+                it.setToolTip(0, g_procList[proc]["name"])
+                it.setToolTip(3, g_procList[proc]["cmdline"])
+                it.setToolTip(4, g_procList[proc]["uid"])
+
         except RuntimeError:
             #underlying c++ object has been deleted
             pass
