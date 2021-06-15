@@ -52,6 +52,8 @@
          </property>
         </spacer>
        </item>
+       
+       
        <item>
         <widget class="QCheckBox" name="freezeCheckBox">
          <property name="text">
@@ -59,6 +61,8 @@
          </property>
         </widget>
        </item>
+       
+       
        <item>
         <widget class="QProgressBar" name="memory">
          <property name="toolTip">
@@ -79,7 +83,6 @@
      border-radius: 3px;
      text-align: center;
  }
-
  </string>
          </property>
          <property name="value">
@@ -93,6 +96,8 @@
          </property>
         </widget>
        </item>
+       
+       
        <item>
         <widget class="QProgressBar" name="swap">
          <property name="toolTip">
@@ -113,7 +118,6 @@
      border-radius: 3px;
      text-align: center;
  }
-
  </string>
          </property>
          <property name="value">
@@ -127,6 +131,8 @@
          </property>
         </widget>
        </item>
+       
+       
        <item>
         <widget class="QwtPlot" name="qwtPlotOverallCpuHist">
          <property name="minimumSize">
@@ -143,6 +149,8 @@
          </property>
         </widget>
        </item>
+       
+       
       </layout>
      </widget>
     </item>
@@ -164,6 +172,8 @@
     </item>
    </layout>
   </widget>
+  
+  
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>

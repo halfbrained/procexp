@@ -56,20 +56,20 @@ class cpuhistoryreader(object):
     self.__overallIoWaitCpuUsage__  = 0
     self.__overallIrqCpuUsage__     = 0
     self._prefixdir = prefixDir
-    
+
   def update(self):
     jiffyStr = utils.procutils.readFullFile(self._prefixdir+'/proc/stat').split("\n")[self.__cpu__+1]
     userMode = int(jiffyStr.split()[1])
     userNiceMode = int(jiffyStr.split()[2])
     systemMode = int(jiffyStr.split()[3])
-    idleMode = int(jiffyStr.split()[4]) 
-    
+    idleMode = int(jiffyStr.split()[4])
+
     ioWait = int(jiffyStr.split()[5])
     irqMode = int(jiffyStr.split()[6])
     softIrqMode = int(jiffyStr.split()[7])
-    
+
     self.__newjiffies = userMode + userNiceMode + systemMode + idleMode + ioWait + irqMode + softIrqMode
-     
+
     if self.__deltaUserMode__ == None:
       self.__prevUserMode__ = userMode
       self.__prevUserNiceMode__ = userNiceMode
@@ -78,7 +78,7 @@ class cpuhistoryreader(object):
       self.__prevIoWait__ = ioWait
       self.__prevIrqMode__ = irqMode
       self.__prevSoftIrqMode__ = softIrqMode
-      
+
       self.__deltaUserMode__ = 0
       self.__deltaUserNiceMode__ = 0
       self.__deltaSystemMode__ = 0
@@ -86,7 +86,7 @@ class cpuhistoryreader(object):
       self.__deltaIoWait__ = 0
       self.__deltaIrqMode__ = 0
       self.__deltaSoftIrqMode__ = 0
-      
+
     else:
       self.__deltaUserMode__ = userMode - self.__prevUserMode__
       self.__deltaUserNiceMode__ = userNiceMode - self.__prevUserNiceMode__
@@ -95,8 +95,8 @@ class cpuhistoryreader(object):
       self.__deltaIoWait__ = ioWait - self.__prevIoWait__
       self.__deltaIrqMode__ = irqMode - self.__prevIrqMode__
       self.__deltaSoftIrqMode__ = softIrqMode - self.__prevSoftIrqMode__
-      
-      
+
+
       self.__prevUserMode__ = userMode
       self.__prevUserNiceMode__ = userNiceMode
       self.__prevSystemMode__ = systemMode
@@ -104,22 +104,22 @@ class cpuhistoryreader(object):
       self.__prevIoWait__ = ioWait
       self.__prevIrqMode__ = irqMode
       self.__prevSoftIrqMode__ = softIrqMode
-      
-    
-    
-    total = float(self.__deltaUserMode__ + 
-            self.__deltaUserNiceMode__ + 
-            self.__deltaSystemMode__ + 
+
+
+
+    total = float(self.__deltaUserMode__ +
+            self.__deltaUserNiceMode__ +
+            self.__deltaSystemMode__ +
             self.__deltaIdleMode__ +
             self.__deltaIoWait__ +
             self.__deltaIrqMode__ +
             self.__deltaSoftIrqMode__)
-    
+
     self.__overallUserCpuUsage__    = round(((self.__deltaUserMode__ + self.__deltaUserNiceMode__)*1.0 / total)*100, 1) if total > 0 else 0
     self.__overallSystemCpuUsage__  = round((self.__deltaSystemMode__ *1.0 / total)*100, 1) if total > 0 else 0
     self.__overallIoWaitCpuUsage__  = round((self.__deltaIoWait__*1.0 / total)*100, 1) if total > 0 else 0
     self.__overallIrqCpuUsage__     = round(((self.__deltaIrqMode__ + self.__deltaSoftIrqMode__) *1.0 / total)*100, 1) if total > 0 else 0
-      
+
   def overallUserCpuUsage(self):
     return self.__overallUserCpuUsage__
   def overallSystemCpuUsage(self):
@@ -130,7 +130,7 @@ class cpuhistoryreader(object):
     return self.__overallIrqCpuUsage__
   def newjiffies(self):
     return self.__newjiffies
- 
+
 class procreader(object):
   def __init__(self, timerValue, historyCount, prefixDir = ""):
     self._prefixDir = prefixDir
@@ -143,7 +143,7 @@ class procreader(object):
     self.__overallSystemCpuUsage__  = 0
     self.__processList__ = {}
     self.__deltaJiffies__ = 0
-    self.__prevJiffies__ = 0    
+    self.__prevJiffies__ = 0
     self.__closedProcesses__ = set()
     self.__newProcesses__ = set()
     self.__passwdfile = utils.procutils.readFullFile("/etc/passwd").split("\n")
@@ -169,7 +169,7 @@ class procreader(object):
       if line.startswith("processor"):
         self.__cpuArray__.append(cpuhistoryreader(self.__cpuCount__, prefixDir=prefixDir))
         self.__cpuCount__ += 1
-    
+
     #network cards
     data = utils.procutils.readFullFile(self._prefixDir+'/proc/net/dev').split("\n")[2:]
     for line in data:
@@ -180,7 +180,7 @@ class procreader(object):
     #try to find speeds if ethtool is available and accessible
     utils.procutils.log("network card speed detection results")
     utils.procutils.log("------------------------------------")
-    
+
     ethtoolerror = False
     for card in self.__networkCards__:
       speed = None
@@ -189,7 +189,7 @@ class procreader(object):
         data = ethtool.communicate()
       except (OSError, ValueError):
         ethtoolerror = True
-      
+
       if data[0] is not None:
         for line in data[0].split("\n"):
           if line.find("Speed") != -1:
@@ -197,7 +197,7 @@ class procreader(object):
               speed = int(line.split(":")[1].split("Mb/s")[0])
             except:
               speed = None
-      
+
       if speed is not None:
         utils.procutils.log("  ethernet device %s has speed %s Mb/s according to ethtool" %(card, speed))
         self.__networkCards__[card]["speed"] = speed
@@ -213,10 +213,10 @@ class procreader(object):
     self.__newProcesses__ = None
     self.__prevJiffies__ = None
     self.__deltaJiffies__ = None
-    
+
     self.__overallUserCpuUsage__ = 0
     self.__overallSystemCpuUsage__  = 0
-    
+
   def __getGlobalJiffies__(self):
     newjiffies = self.__allcpu__.newjiffies()
     if self.__deltaJiffies__ == None:
@@ -224,14 +224,14 @@ class procreader(object):
       self.__deltaJiffies__ = 1
     else:
       self.__deltaJiffies__ = newjiffies - self.__prevJiffies__
-      self.__prevJiffies__ = newjiffies    
-  
+      self.__prevJiffies__ = newjiffies
+
   def __updateCPUs(self):
     self.__allcpu__.update()
     for cpu in self.__cpuArray__:
       cpu.update()
 
-  
+
   def overallUserCpuUsage(self):
     return self.__allcpu__.overallUserCpuUsage()
   def overallSystemCpuUsage(self):
@@ -240,7 +240,7 @@ class procreader(object):
     return self.__allcpu__.overallIoWaitCpuUsage()
   def overallIrqCpuUsage(self):
     return self.__allcpu__.overallIrqCpuUsage()
-    
+
   def getSingleCpuUsage(self, cpu):
     data = (self.__cpuArray__[cpu].overallUserCpuUsage(),
            self.__cpuArray__[cpu].overallSystemCpuUsage(),
@@ -248,42 +248,43 @@ class procreader(object):
            self.__cpuArray__[cpu].overallIrqCpuUsage())
     return data
 
-    
+
   def setFilterUID(self,uid):
     self.__uidFilter__ = uid
     self.__initReader__()
-    
+
   def noFilterUID(self):
     self.__uidFilter__ = None
     self.__initReader__()
-    
+
   def getProcUid(self,proc):
     try:
       uid = os.stat(self._prefixDir + "/proc/"+proc).st_uid
     except OSError:
       uid = 0
     return uid
-    
+
   def __getAllProcesses__(self):
-    alldirs = os.listdir(self._prefixDir + "/proc")   
-    
+    alldirs = os.listdir(self._prefixDir + "/proc")
+
     if self.__uidFilter__ != None:
       newProcessSetAll = [ process for process in alldirs if process.isdigit() ]
-      newProcessList = [ int(process) for process in newProcessSetAll if self.getProcUid(process) == self.__uidFilter__ ]
+      newProcessList = [ int(process) for process in newProcessSetAll
+                                    if self.getProcUid(process) == self.__uidFilter__ ]
       #newProcessList.append(1)
       newProcessSet=set(newProcessList)
-        
+
     else:
       newProcessSet = set([ int(process) for process in alldirs if process.isdigit() ])
-    
+
     oldProcessSet = set([ process for process in self.__processList__ ])
-    
+
     self.__closedProcesses__ = oldProcessSet.difference(newProcessSet)
     self.__newProcesses__ = newProcessSet.difference(oldProcessSet)
-    
+
     for process in self.__closedProcesses__:
       del self.__processList__[process]
-      
+
     for process in self.__newProcesses__:
       self.__processList__[process] = \
         {"name": "", \
@@ -310,8 +311,8 @@ class procreader(object):
       except IndexError:
         pass
     return "???"
-    
-    
+
+
   def __removeUnknownParents__(self):#useful when filtered on UID
     for process in self.__processList__:
       if self.__processList__[process]["PPID"] > 0:
@@ -326,7 +327,7 @@ class procreader(object):
           self.__processList__[process]["env"] = env
         except: #pylint:disable=W0702
           pass
-      
+
   def __getProcessCpuDetails__(self):
     for process in self.__processList__:
       procStat = None
@@ -339,11 +340,11 @@ class procreader(object):
         #get UID of process
         if self.__processList__[process]["uid"] == UNKNOWN:
           uid = str(os.stat(self._prefixDir + "/proc/"+str(process))[4])
-          self.__processList__[process]["uid"] = self.__getUIDName__(uid)        
+          self.__processList__[process]["uid"] = self.__getUIDName__(uid)
       except:
         pass #pylint:disable=W0702
-      
-      try:    
+
+      try:
         statm = utils.procutils.readFullFile(self._prefixDir + "/proc/"+str(process)+"/statm")
         totalRssMem = int(statm.split(' ')[1])*4 #in 4k pages
 
@@ -352,7 +353,7 @@ class procreader(object):
         #for line in smaps:
           #if line.startswith(" "):
             #totalRssMem += int(line.split("kB")[0].strip())
-            
+
       except: #pylint:disable=W0702
         totalRssMem = 0
       if self.__processList__[process]["hasListener"]:
@@ -363,7 +364,7 @@ class procreader(object):
           self.__processList__[process]["wchan"] = UNKNOWN
       else:
         self.__processList__[process]["wchan"] = UNKNOWN
-        
+
       if procStat != None:
         procStatSplitted =  [procStat.split(" (")[0]]+[procStat.split(" (")[1].split(") ")[0]]+procStat.split(") ")[1].split()
         nextJiffy = int(procStatSplitted[13]) + int(procStatSplitted[14])
@@ -371,7 +372,7 @@ class procreader(object):
           cpuUsage = round(((nextJiffy - self.__processList__[process]["prevJiffy"]) / (self.__deltaJiffies__ * 1.0)) * 100, 1)
         except ZeroDivisionError:
           cpuUsage = 0.0
-        
+
         nextJiffyKernel = int(procStatSplitted[14])
         try:
           cpuUsageKernel = round(((nextJiffyKernel - self.__processList__[process]["prevJiffyKernel"]) / (self.__deltaJiffies__ * 1.0)) * 100, 1)
@@ -383,26 +384,26 @@ class procreader(object):
           iototal = int(io[0].split(": ")[1]) + int(io[1].split(": ")[1])
         except: #pylint:disable=W0702
           iototal = 0
-        
+
         if self.__processList__[process]["prevIO"] == 0: #first time
           deltaio = 0
         else:
           deltaio = iototal - self.__processList__[process]["prevIO"]
         self.__processList__[process]["prevIO"] = iototal
-        
+
         self.__processList__[process]["cpuUsage"] = cpuUsage
         self.__processList__[process]["prevJiffy"] = nextJiffy
         self.__processList__[process]["cpuUsageKernel"] = cpuUsageKernel
         self.__processList__[process]["prevJiffyKernel"] = nextJiffyKernel
         self.__processList__[process]["PPID"] = int(procStatSplitted[3])
         self.__processList__[process]["name"] = procStatSplitted[1]
-        
+
         self.__processList__[process]["Rss"] = totalRssMem
         self.__processList__[process]["history"].update(cpuUsage, cpuUsageKernel, totalRssMem, deltaio/1024,self.__processList__[process]["hasListener"])
         self.__processList__[process]["nfThreads"] = procStatSplitted[19]
       else:
         self.__processList__[process]["PPID"] = 1
-        
+
   def getIOAccounting(self):
     """to be implemented in the future"""
     pass
@@ -471,7 +472,7 @@ class procreader(object):
 
     #~ At it`s current implementation state, it's a bit racy on 32-bit machines: if process
     #~ A reads process B's /proc/pid/io while process B is updating one of those 64-bit
-    #~ counters, process A could see an intermediate result.  
+    #~ counters, process A could see an intermediate result.
 
 
   def __getAllSocketInfo__(self):
@@ -500,25 +501,25 @@ class procreader(object):
     self.__cachedMemKb  = memDict["CACHED"]
     self.__swapUsed     = memDict["SWAPTOTAL"]-memDict["SWAPFREE"]
     self.__swapTotal    = memDict["SWAPTOTAL"]
-  
+
   def __getAverageLoad(self):
     load = utils.procutils.readFullFile(self._prefixDir + "/proc/loadavg").split()
     self.__loadavg__ = (load[0],load[1],load[2])
     self.__noofprocs__ = load[3].split("/")[1]
     self.__noofrunningprocs__ = load[3].split("/")[0]
     self.__lastpid__ = load[4]
-    
+
   def getNetworkCards(self):
     return self.__networkCards__
 
   def getNetworkCardUsage(self, cardName):
     return self.__networkCards__[cardName]["actual"][0], self.__networkCards__[cardName]["actual"][1]
-  
+
   def getNetworkCardData(self, cardName):
     return self.__networkCards__[cardName]
-    
+
   def getAllProcessSockets(self,process):
-    
+
     allFds = {}
     allUDP = {}
     try:
@@ -543,7 +544,7 @@ class procreader(object):
         except KeyError:
           pass
     return allFds, allUDP
-    
+
   def __getNetworkCardUsage(self):
     data = utils.procutils.readFullFile(self._prefixDir + '/proc/net/dev').split("\n")[2:]
     actTime = time.time()
@@ -564,20 +565,20 @@ class procreader(object):
             self.__networkCards__[cardName]["actual"][0] = 0
           if self.__networkCards__[cardName]["actual"][1] <0:
             self.__networkCards__[cardName]["actual"][1] = 0
-            
+
           self.__networkCards__[cardName]["actual"][2] = recv
           self.__networkCards__[cardName]["actual"][3] = sent
-        
+
         self.__networkCards__[cardName]["recerrors"]  = int(splittedLine[2])
         self.__networkCards__[cardName]["recdrops"]   = int(splittedLine[3])
         self.__networkCards__[cardName]["senderrors"] = int(splittedLine[10])
         self.__networkCards__[cardName]["senddrops"]  = int(splittedLine[11])
         self.__networkCards__[cardName]["sendcoll"]   = int(splittedLine[13])
-        self.__networkCards__[cardName]["recbytes"]   = int(splittedLine[0])        
-        self.__networkCards__[cardName]["recpackets"]   = int(splittedLine[1])        
-        self.__networkCards__[cardName]["sendbytes"]   = int(splittedLine[8])        
-        self.__networkCards__[cardName]["sendpackets"]   = int(splittedLine[9])          
-  
+        self.__networkCards__[cardName]["recbytes"]   = int(splittedLine[0])
+        self.__networkCards__[cardName]["recpackets"]   = int(splittedLine[1])
+        self.__networkCards__[cardName]["sendbytes"]   = int(splittedLine[8])
+        self.__networkCards__[cardName]["sendpackets"]   = int(splittedLine[9])
+
   def doReadProcessInfo(self):
     self.__updateCPUs()
     self.__getGlobalJiffies__()
@@ -592,7 +593,7 @@ class procreader(object):
     self.__getNetworkCardUsage()
     #keep line below as last command
     self.__prevTimeStamp__ = time.time()
-    
+
   def getProcessInfo(self):
     return self.__processList__, self.__closedProcesses__, self.__newProcesses__
 
