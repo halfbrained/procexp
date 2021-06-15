@@ -101,6 +101,7 @@ g_defaultSettings = {
     "columnWidths": [100,60,40,100,30,30,30,30],
     "updateTimer": 1000,
     "historySampleCount": 200,
+    "hiddenColumns": [],
 }
 
 g_treeViewcolumns = ["Process","PID","CPU","Command Line", "User", "Chan","#thread"]
@@ -205,13 +206,21 @@ def performMenuAction(action):
             g_singleProcessUiList[process].makeVisible()
         else:
             if int(process) in g_procList.keys():
-                g_singleProcessUiList[process] = singleprocess.singleUi(process, g_procList[int(process)]["cmdline"], g_procList[int(process)]["name"], g_reader, int(g_settings["historySampleCount"]))
+                g_singleProcessUiList[process] = singleprocess.singleUi(
+                        process,
+                        g_procList[int(process)]["cmdline"],
+                        g_procList[int(process)]["name"],
+                        g_reader,
+                        int(g_settings["historySampleCount"]),
+                )
     elif action is g_mainUi.actionSaveSettings:
         saveSettings()
     elif action is g_mainUi.actionSettings:
-        msec, depth, fontSize = settingsMenu.doSettings(int(g_settings["updateTimer"]),\
-                                                                                                              int(g_settings["historySampleCount"]), \
-                                                                                                              int(g_settings["fontSize"]))
+        msec, depth, fontSize = settingsMenu.doSettings(
+                int(g_settings["updateTimer"]),
+                int(g_settings["historySampleCount"]),
+                int(g_settings["fontSize"]),
+        )
         g_settings["updateTimer"] = int(msec)
         g_settings["historySampleCount"] = int(depth)
         g_settings["fontSize"] = int(fontSize)
@@ -403,6 +412,11 @@ def loadSettings():
         else:
             g_settings[item] = g_defaultSettings[item]
 
+    # load hidden columns
+    for i,col in enumerate(g_treeViewcolumns):
+        if col in g_settings['hiddenColumns']:
+            g_mainUi.processTreeWidget.setColumnHidden(i, True)
+
     global g_cpuUsageHistory
     global g_cpuUsageSystemHistory
     global g_cpuUsageIoWaitHistory
@@ -421,6 +435,10 @@ def saveSettings():
     for headerSection in range(g_mainUi.processTreeWidget.header().count()):
         widths.append(g_mainUi.processTreeWidget.header().sectionSize(headerSection))
     g_settings["columnWidths"] = widths
+
+    for i, col in enumerate(g_treeViewcolumns):
+        if g_mainUi.processTreeWidget.isColumnHidden(i):
+            g_settings['hiddenColumns'].append(col)
 
     settingsPath = os.path.expanduser("~/.procexp")
     if not(os.path.exists(settingsPath)):
@@ -446,6 +464,7 @@ def onHeaderContextMenu(point):
         #g_mainUi.processTreeWidget.setColumnHidden(selectedItem.data().toInt()[0], not selectedItem.isChecked())
         g_mainUi.processTreeWidget.setColumnHidden(selectedItem.data(), not selectedItem.isChecked())
 
+
 def prepareUI(mainUi):
     """ prepare the main UI, setup plots and menu triggers
     """
@@ -454,9 +473,9 @@ def prepareUI(mainUi):
     ram('<prepare ui')
 
     palette = app.palette()
-    palette.setColor(palette.AlternateBase, QtGui.QColor(0xa0, 0xa0, 0xa0))
-    palette.setColor(palette.Background, QtGui.QColor(0xe0, 0xe0, 0xe0))
-    palette.setColor(palette.Base, QtGui.QColor(0xe0, 0xe0, 0xe0))
+    palette.setColor(palette.AlternateBase, QtGui.QColor(0xd8, 0xd8, 0xd8))
+    palette.setColor(palette.Background,    QtGui.QColor(0xe0, 0xe0, 0xe0))
+    palette.setColor(palette.Base,          QtGui.QColor(0xe0, 0xe0, 0xe0))
     app.setPalette(palette)
     #pal = g_mainUi.processTreeWidget.palette()
     #g_mainUi.processTreeWidget.setPalette(pal)
@@ -598,6 +617,8 @@ def expandChilds(parent):
 def expandAll():
     """ expand all subtrees
     """
+    print(f'------expanding all')
+
     global g_mainUi
     for topLevelIndex in range(g_mainUi.processTreeWidget.topLevelItemCount()):
         item = g_mainUi.processTreeWidget.topLevelItem(topLevelIndex)
@@ -740,10 +761,9 @@ def updateUI():
         global g_curveIoWaitHist
         global g_curveCpuPlotGrid
 
-        g_cpuUsageHistory.append(g_reader.overallUserCpuUsage()+
-                                                      g_reader.overallSystemCpuUsage()+
-                                                      g_reader.overallIoWaitCpuUsage()+
-                                                      g_reader.overallIrqCpuUsage())
+        cpu_total = g_reader.overallUserCpuUsage() + g_reader.overallSystemCpuUsage() + \
+                g_reader.overallIoWaitCpuUsage() + g_reader.overallIrqCpuUsage()
+        g_cpuUsageHistory.append(cpu_total)
         #g_cpuUsageHistory = g_cpuUsageHistory[1:]
         del g_cpuUsageHistory[0]
 
@@ -782,6 +802,14 @@ def updateUI():
         else:
             g_mainUi.swap.setMaximum(1)
 
+        # statusbar
+        sb_items = [
+            f'CPU: {cpu_total:.1f}',
+            f'RAM: {mem[1]/1024:.1f} / {mem[0]/1024:.1f} MB',
+            f'Processes: {len(g_procList)}',
+        ]
+        g_mainUi.statusbar.showMessage('  ][  '.join(sb_items))
+
     except:
         import traceback
         utils.procutils.log("Unhandled exception:%s" %traceback.format_exc())
@@ -793,7 +821,7 @@ if __name__ == "__main__":
     print("Call to __main__")
     app = QtWidgets.QApplication(sys.argv)
     print("app created: '%s'" % app)
-    bp()
+    #bp()
 
     g_mainWindow = QtWidgets.QMainWindow()
     g_mainUi = uic.loadUi(os.path.join(os.path.dirname(__file__), "./ui/main.ui"), baseinstance=g_mainWindow)
