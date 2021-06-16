@@ -103,6 +103,7 @@ g_defaultSettings = {
     "updateTimer": 1000,
     "historySampleCount": 200,
     "hiddenColumns": [],
+    #"windowSize": [x,y], # no default - do not resize if absent
 }
 
 g_treeViewcolumns = ["Process","PID","CPU","Command Line", "User", "Chan","#thread"]
@@ -465,6 +466,11 @@ def loadSettings():
     g_cpuUsageIoWaitHistory = [0] * int(g_settings["historySampleCount"])
     g_cpuUsageIrqHistory = [0] * int(g_settings["historySampleCount"])
 
+    # window size
+    if 'windowSize' in g_settings:
+        width,height = g_settings['windowSize']
+        g_mainUi.resize(QtCore.QSize(int(width), int(height)))
+
 
 def saveSettings():
     '''save settings to ~.procexp directory, in file "settings"
@@ -477,6 +483,9 @@ def saveSettings():
     for i, col in enumerate(g_treeViewcolumns):
         if g_mainUi.processTreeWidget.isColumnHidden(i):
             g_settings['hiddenColumns'].append(col)
+
+    _window_size = g_mainUi.size()
+    g_settings['windowSize'] = [_window_size.width(), _window_size.height()]
 
     settingsPath = os.path.expanduser("~/.procexp")
     if not(os.path.exists(settingsPath)):
@@ -826,7 +835,7 @@ def updateUI():
 
                 # hints for long columns: {"Process","Command Line", "User"} 0,3,4
                 it.setToolTip(0, g_procList[proc]["name"])
-                it.setToolTip(3, g_procList[proc]["cmdline"])
+                it.setToolTip(3, '\n'.join(g_procList[proc]["cmdline"].split() )) # spearate words to lines
                 it.setToolTip(4, g_procList[proc]["uid"])
 
         except RuntimeError:
