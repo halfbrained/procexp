@@ -73,7 +73,7 @@ ram('. ipdb')
 g_timer = None
 g_reader = None
 g_treeProcesses = {} #flat dictionary of processes; pid -> QTreeWidgetItem
-g_toplevelItems = {}
+g_toplevelItems = {} # not used...
 g_mainUi = None
 g_onlyUser = True
 g_greenTopLevelItems = {}
@@ -96,6 +96,7 @@ g_procList = {}
 
 #default settings
 g_settings = {}
+#TODO add: sort type, is tree
 g_defaultSettings = {
     "fontSize": 10,
     "columnWidths": [100,60,40,100,30,30,30,30],
@@ -159,6 +160,10 @@ def _apply_tree_altcolors():
     baseBgColor = g_mainUi.processTreeWidget.palette().color(QtGui.QPalette.Base)
     altBgColor = g_mainUi.processTreeWidget.palette().color(QtGui.QPalette.AlternateBase)
     scan_apply(root)
+
+
+def is_tree_mode():
+    _tree_type == 'tree'
 
 
 def performMenuAction(action):
@@ -377,6 +382,8 @@ class HotkeyFilter(QtCore.QObject):
 
             elif event.key() == HotkeyFilter.Key_F5: # tree
                 event.accept()
+                new_tree_type = 'flat' if is_tree_mode() else 'tree'
+                set_tree_type(new_tree_type)
 
             elif event.key() == HotkeyFilter.Key_Escape: # escape - clear filter
                 #if g_mainUi.filter.hasFocus():
@@ -512,8 +519,11 @@ def on_filter(filter_str):
     else:
         set_tree_type('tree')
 
+_tree_type = 'tree'
 # flat or tree
 def set_tree_type(_type):
+    global _tree_type
+
     if _type == 'flat':
         print(f' converting to FLAT')
         # remove all children, then add to top level
@@ -555,54 +565,12 @@ def set_tree_type(_type):
     else:
         raise Exception(f'moron {_type}')
 
+    _tree_type = _type
 
 
-
-
-_ignore_sort = False
-
-def _on_sort(icolumn, order):
-    # column not 0 - flat list
-    # col-0: states 0,1,2
-
-    global _ignore_sort
-
-
-    if _ignore_sort:
-        _header = g_mainUi.processTreeWidget.header()
-        print(f'sort: {_header.sortIndicatorOrder()}, indica:{_header.isSortIndicatorShown()}')
-        return
-
-    header = g_mainUi.processTreeWidget.header()
-    is_indicator = header.isSortIndicatorShown()
-
-    #0,1 => 1,1 -> 0,0! -> 1,1!
-    if icolumn == 0:
-        if order == 1  and  is_indicator:     # 0 (0,1) -> 2 (0`,0)
-            header.setSortIndicatorShown(False)
-            try:
-                _ignore_sort = True
-                g_mainUi.processTreeWidget.sortItems(0, 0) # column=0, order=0
-            finally:
-                _ignore_sort = False
-            set_tree_type('tree')
-            print(f' 1 -> 2 (sort 1`, indic:off)')
-
-        elif order == 1:        # 2 (0,0) -> 1 (1,1)
-            #if not is_indicator:
-            header.setSortIndicatorShown(True)
-            set_tree_type('flat')
-            print(f' 2 -> 0 (sort 1`, indic:ON) -')
-
-        elif order == 0: #  and  is_indicator:     # 1 (1,1) -> 0 (0,1)
-            #header.setSortIndicatorShown(True)
-            print(f' 0 -> 1   (sort 1`, indic:ON) -- FLAT')
-    else:
-        if not is_indicator:
-            header.setSortIndicatorShown(True)
+def _on_header_click(logical_ind):
+    if logical_ind != 0:
         set_tree_type('flat')
-
-    print(f'sort: {header.sortIndicatorOrder()}, indica:{header.isSortIndicatorShown()}')
 
 
 def prepareUI(mainUi):
@@ -621,8 +589,8 @@ def prepareUI(mainUi):
     #g_mainUi.processTreeWidget.setPalette(pal)
 
     #g_mainUi.processTreeWidget.header().clicked.connect(on_click)
-    #g_mainUi.processTreeWidget.header().clicked.connect(on_click)
-    g_mainUi.processTreeWidget.header().sortIndicatorChanged.connect(_on_sort)
+    #g_mainUi.processTreeWidget.header().sortIndicatorChanged.connect(_on_sort)
+    g_mainUi.processTreeWidget.header().sortIndicatorChanged.connect(_on_header_click)
 
 
     mainUi.processTreeWidget.setSortingEnabled(True)
@@ -730,12 +698,15 @@ def addProcessAndParents(proc, procList):
     g_treeProcesses[proc] = QtWidgets.QTreeWidgetItem([])
     g_greenTopLevelItems[proc] = g_treeProcesses[proc]
 
-    if procList[proc]["PPID"] > 0 and (procList[proc]["PPID"] in procList.keys()): # process has a parent
-        parent = addProcessAndParents(procList[proc]["PPID"],procList)
-        parent.addChild(g_treeProcesses[proc])
-    else: # process has no parent, thus it is toplevel. add it to the treewidget
+    if is_tree_mode():
+        if procList[proc]["PPID"] > 0 and (procList[proc]["PPID"] in procList.keys()): # process has a parent
+            parent = addProcessAndParents(procList[proc]["PPID"],procList)
+            parent.addChild(g_treeProcesses[proc])
+        else: # process has no parent, thus it is toplevel. add it to the treewidget
+            g_mainUi.processTreeWidget.addTopLevelItem(g_treeProcesses[proc])
+            g_toplevelItems[proc] = g_treeProcesses[proc]
+    else: # flat - add to top level
         g_mainUi.processTreeWidget.addTopLevelItem(g_treeProcesses[proc])
-        g_toplevelItems[proc] = g_treeProcesses[proc]
 
     return g_treeProcesses[proc]
 
