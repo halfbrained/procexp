@@ -124,9 +124,9 @@ def _get_top_proc(history_fraction):
         history = proc['history']
         glob_usages = [g_cpuUsageHistory[ind], g_cpuUsageSystemHistory[ind], g_cpuUsageIrqHistory[ind],
                 g_cpuUsageIoWaitHistory[ind]]
-        glob_usages = ['{:.1f}'.format(val) for val in glob_usages]
+        s_glob_usages = ['{:.1f}'.format(val) for val in glob_usages]
         hint_lines = [
-            f'{proc["name"]} ({top_pid}): {usage:.1f}% / {sum(glob_usages):.1f}%  {glob_usages}',
+            f'{proc["name"]} ({top_pid}): {usage:.1f}% / {sum(glob_usages):.1f}%  {s_glob_usages}',
             f'cpu: {history.cpuUsageHistory[ind]:.1f}%',
             f'kernel: {history.cpuUsageKernelHistory[ind]:.1f}%',
             f'IO: {history.IOHistory[ind]:.1f}',
