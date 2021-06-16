@@ -53,7 +53,7 @@ class memoryPlotObject(object):
 
     self.__memoryUsageHistory__.append(values[0]-values[1])
     self.__memoryUsageHistory__ = self.__memoryUsageHistory__[1:]
-    self.__curveMemHist__.setData(range(self.__depth__), self.__memoryUsageHistory__)
+    self.__curveMemHist__.setData(list(range(self.__depth__)), self.__memoryUsageHistory__)
     self.__plot__.replot()
 
 class cpuPlotObject(object):
@@ -108,10 +108,10 @@ class cpuPlotObject(object):
     self.__cpuUsageIrqHistory__.append(values[3])
     self.__cpuUsageIrqHistory__ = self.__cpuUsageIrqHistory__[1:]
 
-    self.__curveCpuHist__ .setData(range(self.__depth__), self.__cpuUsageHistory__)
-    self.__curveCpuSystemHist__.setData(range(self.__depth__), self.__cpuUsageSystemHistory__)
-    self.__curveIoWaitHist__.setData(range(self.__depth__), self.__cpuUsageIoWaitHistory__)
-    self.__curveIrqHist__.setData(range(self.__depth__), self.__cpuUsageIrqHistory__)
+    self.__curveCpuHist__ .setData(list(range(self.__depth__)), self.__cpuUsageHistory__)
+    self.__curveCpuSystemHist__.setData(list(range(self.__depth__)), self.__cpuUsageSystemHistory__)
+    self.__curveIoWaitHist__.setData(list(range(self.__depth__)), self.__cpuUsageIoWaitHistory__)
+    self.__curveIrqHist__.setData(list(range(self.__depth__)), self.__cpuUsageIrqHistory__)
     self.__plot__.replot()
 
 
@@ -156,6 +156,8 @@ class systemOverviewUi(object):
     self.__cpuPlotArray__ += [[self.__ui__.qwtPlotCpuHist_31]]
     self.__cpuPlotArray__ += [[self.__ui__.qwtPlotCpuHist_32]]
 
+    self._shown = False
+
 
     for cpu in range(32):
       if (cpu + 1) > self.__cpuCount__:
@@ -176,9 +178,10 @@ class systemOverviewUi(object):
   def show(self):
     self.__dialog__.show()
     self.__dialog__.setVisible(True)
+    self._shown = True
 
   def close(self):
-    self.__dialog__.close()
+    self._shown = not self.__dialog__.close()
 
   def setFontSize(self, fontSize):
     font = QtGui.QFont()
@@ -188,6 +191,9 @@ class systemOverviewUi(object):
 
   def update(self):
     #print('--update systemOverviewUi')
+
+    if not self._shown:
+        return
 
     for plot in range(32):
       if plot+1 <= self.__cpuCount__:

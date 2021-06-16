@@ -29,37 +29,37 @@ _MAX_NOOFNETWORKCARDS=32
 
 class networkPlotObject(object):
   def __init__(self, plot, depth, reader, card, scale):
-    self.__curveNetInHist__ = plotobjects.niceCurve("Network In History", 
-                             1 ,QtGui.QColor(241,254,1), QtGui.QColor(181,190,1), 
+    self.__curveNetInHist__ = plotobjects.niceCurve("Network In History",
+                             1 ,QtGui.QColor(241,254,1), QtGui.QColor(181,190,1),
                              plot)
-    self.__curveNetOutHist__ = plotobjects.niceCurve("Network Out History", 
-                             1, QtGui.QColor(28,255,255),QtGui.QColor(0,168,168), 
+    self.__curveNetOutHist__ = plotobjects.niceCurve("Network Out History",
+                             1, QtGui.QColor(28,255,255),QtGui.QColor(0,168,168),
                              plot)
-                             
+
     self.__depth__ = depth
     self.__reader__ = reader
     self.__first__ = False
     self.__plot__ = plot
     self.__card__ = card
-    
+
     #adapt the network plot
     self.__adaptednetworkplot = plotobjects.procExpPlot(self.__plot__, scale)
-    
+
     self.__networkInUsageHistory__ = [0] * int(self.__depth__)
     self.__networkOutUsageHistory__ = [0] * int(self.__depth__)
-    
+
   def update(self):
     values = self.__reader__.getNetworkCardUsage(self.__card__)
-    
+
     #print self.__networkInUsageHistory__
     self.__networkInUsageHistory__.append(values[0]+values[1])
     self.__networkOutUsageHistory__.append(values[1])
     self.__networkInUsageHistory__ = self.__networkInUsageHistory__[1:]
     self.__networkOutUsageHistory__ = self.__networkOutUsageHistory__[1:]
-    self.__curveNetInHist__ .setData(range(self.__depth__), self.__networkInUsageHistory__)
-    self.__curveNetOutHist__ .setData(range(self.__depth__), self.__networkOutUsageHistory__)
+    self.__curveNetInHist__ .setData(list(range(self.__depth__)), self.__networkInUsageHistory__)
+    self.__curveNetOutHist__ .setData(list(range(self.__depth__)), self.__networkOutUsageHistory__)
     self.__plot__.replot()
-                             
+
 
 class networkOverviewUi(object):
   def __init__(self, networkCards, depth, reader):
@@ -74,17 +74,19 @@ class networkOverviewUi(object):
                               getattr(self.__ui__, "qwtPlotNetworkCardHistory_%02d" %_i)]]
     self.__tabs__ = {}
 
+    self._shown = False
+
     for card in range(_MAX_NOOFNETWORKCARDS):
       if card+1 > len(self.__networkCards__):
         self.__netPlotArray[card][0].setVisible(False)
         self.__netPlotArray[card].append(False)
       else:
         self.__netPlotArray[card].append(True)
-        
+
     idx = 0
     for cardName in self.__networkCards__:
       if self.__netPlotArray[idx][2] == True:
-        
+
         speed = self.__networkCards__[cardName]["speed"]
         if speed is not None:
           scale = plotobjects.scaleObject()
@@ -93,23 +95,23 @@ class networkOverviewUi(object):
         else:
           scale = None #leads to autoscaling in graphs...
 
-          
+
         self.__netPlotArray[idx].append(networkPlotObject(self.__netPlotArray[idx][1],
                                                          self.__depth__,
                                                          self.__reader__,
                                                          cardName,
                                                          scale))
-        
+
         if speed is None:
           self.__netPlotArray[idx][0].setTitle(cardName+" / " + "??" + " MB/s")
         else:
           self.__netPlotArray[idx][0].setTitle(cardName+", ~" + str(round(scale.max / (1024.0*1024.0))) + " MB/s")
       idx +=1
-      
+
     #create tab per network card
     for card in self.__networkCards__:
       tab = QtWidgets.QWidget()
-      self.__tabs__[card] = [tab, [QtWidgets.QLabel(tab) for _ in range(13)], [QtWidgets.QLabel(tab) for _ in range(13)]] 
+      self.__tabs__[card] = [tab, [QtWidgets.QLabel(tab) for _ in range(13)], [QtWidgets.QLabel(tab) for _ in range(13)]]
       self.__ui__.tabWidget.addTab(tab, "")
       self.__ui__.tabWidget.setTabText(self.__ui__.tabWidget.indexOf(tab), card)
       ymargin=20
@@ -135,7 +137,7 @@ class networkOverviewUi(object):
       self.__tabs__[card][1][10].setText("Send bytes/s")
       self.__tabs__[card][1][11].setText("Avg rec packet size")
       self.__tabs__[card][1][12].setText("Avg snd packet size")
-      
+
       y = 10
       for label in self.__tabs__[card][2][0:7]:
         label.setGeometry(QtCore.QRect(150, y, 80, 18))
@@ -146,16 +148,17 @@ class networkOverviewUi(object):
         label.setGeometry(QtCore.QRect(410, y, 80, 18))
         y += ymargin
         label.setText("0")
-      
+
   def show(self):
     """ show the previous possible hidden dialog
     """
     self.__dialog__.show()
-    self.__dialog__.setVisible(True)    
- 
+    self.__dialog__.setVisible(True)
+    self._shown = True
+
   def close(self):
     """close"""
-    self.__dialog__.close()
+    self._shown = not self.__dialog__.close()
 
   def setFontSize(self, fontSize):
     """set font size of this dialog"""
@@ -165,17 +168,20 @@ class networkOverviewUi(object):
 
   def update(self):
     """update the state of this diaglog"""
+    if not self._shown:
+        return
+
     for plot in range(_MAX_NOOFNETWORKCARDS):
       if plot+1 <= len(self.__networkCards__):
         self.__netPlotArray[plot][3].update()
-    
+
     totalerrors = 0
     totalcoll = 0
     totaldrop = 0
-    
+
     for card in self.__networkCards__:
       networkStat = self.__reader__.getNetworkCardData(card)
-      
+
       self.__tabs__[card][2][0].setText(str(networkStat["recerrors"]))
       totalerrors += networkStat["recerrors"]
       self.__tabs__[card][2][1].setText(str(networkStat["recdrops"]))
@@ -197,12 +203,12 @@ class networkOverviewUi(object):
         self.__tabs__[card][2][12].setText(str(int(networkStat["sendbytes"] / (networkStat["sendpackets"]*1.0))))
       except:
         self.__tabs__[card][2][12].setText("0")
-        
+
       usage = self.__reader__.getNetworkCardUsage(card)
       self.__tabs__[card][2][9].setText(utils.procutils.humanReadable(usage[0])+ "/s")
       self.__tabs__[card][2][10].setText(utils.procutils.humanReadable(usage[1])+ "/s")
-    
+
     self.__ui__.labelTotalDrops.setText(str(totaldrop))
     self.__ui__.labelTotalCollisions.setText(str(totalcoll))
     self.__ui__.labelTotalError.setText(str(totalerrors))
-    
+

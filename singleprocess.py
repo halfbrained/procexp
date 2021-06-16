@@ -60,7 +60,7 @@ class singleUi(object):
     self.__dialog__.show()
     self.__dialog__.setWindowTitle(proc+":"+cmdLine+" Properties")
     self.__processGone__ = False
-    self.__y__ = range(self.__depth__)
+    self.__y__ = list(range(self.__depth__))
     self.__tcpConnections__ = []
     self.__tcpStat__ = None
     self.__TCPHist__ = [0] * self.__reader__.getHistoryDepth(self.__proc__)
