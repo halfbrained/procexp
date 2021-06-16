@@ -161,7 +161,6 @@ def _apply_tree_altcolors():
     scan_apply(root)
 
 
-
 def performMenuAction(action):
     ''' perform action from menu
     '''
@@ -257,108 +256,140 @@ def performMenuAction(action):
 '!!! MY'
 
 class CanvasPicker(QtCore.QObject):
-        def __init__(self, plot):
-                QtCore.QObject.__init__(self, plot)
-                #self.__selectedCurve = None
-                #self.__selectedPoint = -1
-                self.__plot = plot
-                canvas = plot.canvas()
-                canvas.installEventFilter(self)
-                # We want the focus, but no focus rect.
-                # The selected point will be highlighted instead.
-                canvas.setFocusPolicy(QtCore.Qt.StrongFocus)
-                canvas.setCursor(QtCore.Qt.PointingHandCursor)
-                canvas.setFocusIndicator(qwt.QwtPlotCanvas.ItemFocusIndicator)
-                canvas.setFocus()
-                '???'
-                #self.__shiftCurveCursor(True)
+    def __init__(self, plot):
+        QtCore.QObject.__init__(self, plot)
+        #self.__selectedCurve = None
+        #self.__selectedPoint = -1
+        self.__plot = plot
+        canvas = plot.canvas()
+        canvas.installEventFilter(self)
+        # We want the focus, but no focus rect.
+        # The selected point will be highlighted instead.
+        canvas.setFocusPolicy(QtCore.Qt.StrongFocus)
+        canvas.setCursor(QtCore.Qt.PointingHandCursor)
+        canvas.setFocusIndicator(qwt.QwtPlotCanvas.ItemFocusIndicator)
+        canvas.setFocus()
+        '???'
+        #self.__shiftCurveCursor(True)
 
-                #plot.setToolTip('!Crap!')
-                self._last_mouse_glob = None
-                self._last_mouse_loc = None
+        #plot.setToolTip('!Crap!')
+        self._last_mouse_glob = None
+        self._last_mouse_loc = None
 
-        def event(self, event):
-                if event.type() == QtCore.QEvent.User:
-                        self.__showCursor(True)
-                        return True
-                return QtCore.QObject.event(self, event)
-
-        def eventFilter(self, object, event):
-                #if event.type() == QtCore.QEvent.MouseMove:
-                        #self.__move(event.pos())
-                        #print(f'mouse -- {event, event.pos()}')
-                        #bp()
-                        #self.__plot.setToolTip(f'mouse -- {event, event.pos()}')
-                        #return True
-                        #return False
-                if event.type() == QtCore.QEvent.ToolTip:
-                        self._last_mouse_glob = event.globalPos()
-                        self._last_mouse_loc = event.pos()
-                        fraction = self._last_mouse_loc.x() / self.__plot.geometry().width()
-                        #bp()
-                        #self.__plot.setToolTip(f'mouse -- {event, event.pos()}')
-                        ttt = _get_top_proc(fraction)
-                        self.__plot.setToolTip(ttt)
-                        #print(f'--updated ToolTip')
-
-                        #return True
-                elif event.type() == QtCore.QEvent.Paint:
-                        #bp()
-                        if type(self.__plot.toolTip()) is str:
-                            #self.__plot.setToolTip(ttt)
-                            #self.event(QtCore.QEvent(QtCore.QEvent.ToolTipChange))
-                            #self.event(QtCore.QEvent(QtCore.QEvent.ToolTip))
-                            #print(f'painting...: {self.__plot.toolTip()}')
-                            #self.__plot.setToolTip(ttt)
-                            if self._last_mouse_glob:
-                                fraction = self._last_mouse_loc.x() / self.__plot.geometry().width()
-                                ttt = _get_top_proc(fraction)
-                                QtWidgets.QToolTip.showText(self._last_mouse_glob, ttt)
-                        #return True
-                elif event.type() == QtCore.QEvent.Leave:
-                    self._last_mouse_glob = None
-                    self._last_mouse_loc = None
-
-                else:
-                        #print(f'-------other ev: {event, event.type(), dir(event)}')
-                        print(f'-------other ev: {event, event.type()}')
-                return False
-
-        def __showCursor(self, showIt):
-                curve = self.__selectedCurve
-                if not curve:
-                        return
-                symbol = curve.symbol()
-                brush = symbol.brush()
-                if showIt:
-                        symbol.setBrush(symbol.brush().color().darker(180))
-                curve.directPaint(self.__selectedPoint, self.__selectedPoint)
-                if showIt:
-                        symbol.setBrush(brush)
-
-        def __shiftCurveCursor(self, up):
-                curves = [
-                        curve for curve in self.__plot.itemList() if isinstance(curve, QwtPlotCurve)
-                ]
-                if not curves:
-                        return
-                if self.__selectedCurve in curves:
-                        index = curves.index(self.__selectedCurve)
-                        if up:
-                                index += 1
-                        else:
-                                index -= 1
-                        # keep index within [0, len(curves))
-                        index += len(curves)
-                        index %= len(curves)
-                else:
-                        index = 0
-                self.__showCursor(False)
-                self.__selectedPoint = 0
-                self.__selectedCurve = curves[index]
+    def event(self, event):
+        if event.type() == QtCore.QEvent.User:
                 self.__showCursor(True)
+                return True
+        return QtCore.QObject.event(self, event)
+
+    def eventFilter(self, object, event):
+        #if event.type() == QtCore.QEvent.MouseMove:
+                #self.__move(event.pos())
+                #print(f'mouse -- {event, event.pos()}')
+                #bp()
+                #self.__plot.setToolTip(f'mouse -- {event, event.pos()}')
+                #return True
+                #return False
+        if event.type() == QtCore.QEvent.ToolTip:
+                self._last_mouse_glob = event.globalPos()
+                self._last_mouse_loc = event.pos()
+                fraction = self._last_mouse_loc.x() / self.__plot.geometry().width()
+                #bp()
+                #self.__plot.setToolTip(f'mouse -- {event, event.pos()}')
+                ttt = _get_top_proc(fraction)
+                self.__plot.setToolTip(ttt)
+                #print(f'--updated ToolTip')
+
+                #return True
+        elif event.type() == QtCore.QEvent.Paint:
+                #bp()
+                if type(self.__plot.toolTip()) is str:
+                    #self.__plot.setToolTip(ttt)
+                    #self.event(QtCore.QEvent(QtCore.QEvent.ToolTipChange))
+                    #self.event(QtCore.QEvent(QtCore.QEvent.ToolTip))
+                    #print(f'painting...: {self.__plot.toolTip()}')
+                    #self.__plot.setToolTip(ttt)
+                    if self._last_mouse_glob:
+                        fraction = self._last_mouse_loc.x() / self.__plot.geometry().width()
+                        ttt = _get_top_proc(fraction)
+                        QtWidgets.QToolTip.showText(self._last_mouse_glob, ttt)
+                #return True
+        elif event.type() == QtCore.QEvent.Leave:
+            self._last_mouse_glob = None
+            self._last_mouse_loc = None
+
+        else:
+                #print(f'-------other ev: {event, event.type(), dir(event)}')
+                print(f'-------other ev: {event, event.type()}')
+        return False
+
+    def __showCursor(self, showIt):
+        curve = self.__selectedCurve
+        if not curve:
+                return
+        symbol = curve.symbol()
+        brush = symbol.brush()
+        if showIt:
+                symbol.setBrush(symbol.brush().color().darker(180))
+        curve.directPaint(self.__selectedPoint, self.__selectedPoint)
+        if showIt:
+                symbol.setBrush(brush)
+
+    def __shiftCurveCursor(self, up):
+        curves = [
+                curve for curve in self.__plot.itemList() if isinstance(curve, QwtPlotCurve)
+        ]
+        if not curves:
+                return
+        if self.__selectedCurve in curves:
+                index = curves.index(self.__selectedCurve)
+                if up:
+                        index += 1
+                else:
+                        index -= 1
+                # keep index within [0, len(curves))
+                index += len(curves)
+                index %= len(curves)
+        else:
+                index = 0
+        self.__showCursor(False)
+        self.__selectedPoint = 0
+        self.__selectedCurve = curves[index]
+        self.__showCursor(True)
+
+
+class HotkeyFilter(QtCore.QObject):
+    Key_Escape = 0x01000000
+    Key_F4 = 0x01000033 # filter
+    Key_F5 = 0x01000034 # tree
+
+    def __init__(self, ob):
+        QtCore.QObject.__init__(self, ob)
+
+        ob.installEventFilter(self)
+
+    def eventFilter(self, object, event):
+        #TODO modifiers: https://doc.qt.io/qt-5/qkeyevent.html#modifiers
+        if event.type() == QtCore.QEvent.KeyPress:
+            if event.key() == HotkeyFilter.Key_F4: # filter
+                event.accept()
+                g_mainUi.filter.setFocus()
+
+            elif event.key() == HotkeyFilter.Key_F5: # tree
+                event.accept()
+
+            elif event.key() == HotkeyFilter.Key_Escape: # escape - clear filter
+                #if g_mainUi.filter.hasFocus():
+                if g_mainUi.filter.text():
+                    g_mainUi.filter.setText('')
+
+        #else:
+        #print(f'-------other ev: {event, event.type()}')
+        return False
+
 
 _cpu_hist_picker = None
+_hotkey_filter = None
 
 
 def setFontSize(fontSize):
@@ -525,6 +556,9 @@ def set_tree_type(_type):
         raise Exception(f'moron {_type}')
 
 
+
+
+
 _ignore_sort = False
 
 def _on_sort(icolumn, order):
@@ -533,38 +567,42 @@ def _on_sort(icolumn, order):
 
     global _ignore_sort
 
+
     if _ignore_sort:
+        _header = g_mainUi.processTreeWidget.header()
+        print(f'sort: {_header.sortIndicatorOrder()}, indica:{_header.isSortIndicatorShown()}')
         return
 
     header = g_mainUi.processTreeWidget.header()
     is_indicator = header.isSortIndicatorShown()
 
     #0,1 => 1,1 -> 0,0! -> 1,1!
-
     if icolumn == 0:
-        if order == 0  and  is_indicator:     # 1 (1,1) -> 2 (1,0)
+        if order == 1  and  is_indicator:     # 0 (0,1) -> 2 (0`,0)
+            header.setSortIndicatorShown(False)
             try:
                 _ignore_sort = True
-                g_mainUi.processTreeWidget.sortItems(0, 1) # column=0, order=1
+                g_mainUi.processTreeWidget.sortItems(0, 0) # column=0, order=0
             finally:
                 _ignore_sort = False
-            header.setSortIndicatorShown(False)
-            print(f' 1 -> 2')
-
-        elif order == 0:
-            #if not is_indicator:   # 2 (1,0) -> 0 (0,1)
-            header.setSortIndicatorShown(True)
             set_tree_type('tree')
-            print(f' 2 -> 0')
+            print(f' 1 -> 2 (sort 1`, indic:off)')
 
-        elif order == 1: #  and  is_indicator:     # 0 (0,1) -> 1 (1,1)
-            #header.setSortIndicatorShown(True)
-            print(f' 0 -> 1')
+        elif order == 1:        # 2 (0,0) -> 1 (1,1)
+            #if not is_indicator:
+            header.setSortIndicatorShown(True)
             set_tree_type('flat')
+            print(f' 2 -> 0 (sort 1`, indic:ON) -')
+
+        elif order == 0: #  and  is_indicator:     # 1 (1,1) -> 0 (0,1)
+            #header.setSortIndicatorShown(True)
+            print(f' 0 -> 1   (sort 1`, indic:ON) -- FLAT')
     else:
         if not is_indicator:
             header.setSortIndicatorShown(True)
         set_tree_type('flat')
+
+    print(f'sort: {header.sortIndicatorOrder()}, indica:{header.isSortIndicatorShown()}')
 
 
 def prepareUI(mainUi):
@@ -642,6 +680,7 @@ def prepareUI(mainUi):
 
     '!!! MY'
     _cpu_hist_picker = CanvasPicker(mainUi.qwtPlotOverallCpuHist)
+    _hotkey_filter = HotkeyFilter(mainUi)
 
     scale = plotobjects.scaleObject()
     scale.min = 0
