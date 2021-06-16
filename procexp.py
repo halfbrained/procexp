@@ -464,6 +464,91 @@ def onHeaderContextMenu(point):
         #g_mainUi.processTreeWidget.setColumnHidden(selectedItem.data().toInt()[0], not selectedItem.isChecked())
         g_mainUi.processTreeWidget.setColumnHidden(selectedItem.data(), not selectedItem.isChecked())
 
+# flat or tree
+def set_tree_type(_type):
+    if _type == 'flat':
+        print(f' converting to FLAT')
+        # remove all children, then add to top level
+        children = []  # all removed children
+        for i in range(g_mainUi.processTreeWidget.topLevelItemCount()):
+            topLevelItem = g_mainUi.processTreeWidget.topLevelItem(i)
+            take_all_children(topLevelItem, children)
+
+        for item in children:
+            g_mainUi.processTreeWidget.addTopLevelItem(item)
+
+    elif _type == 'tree': # convert back to tree
+        print(f' converting to TREE')
+        tree = g_mainUi.processTreeWidget
+        children_map = {} # pid -> list of child pids
+        root = tree.invisibleRootItem()
+        for pid in g_procList:
+            ppid = g_procList[pid]["PPID"]
+            children_map.setdefault(ppid, []).append(pid)
+            # remove from tree list
+            if ppid > 0  and  ppid in g_procList:
+                index = root.indexOfChild(g_treeProcesses[pid])
+                tree.takeTopLevelItem(index)
+
+        # add children to parents accoding to `children_map`
+        tree_items = [tree.topLevelItem(i)  for i in range(tree.topLevelItemCount())]
+        pids_in_tree = [pid for pid,item in g_treeProcesses.items()  if item in tree_items]
+        while pids_in_tree:
+            pid = pids_in_tree.pop(0) # take first pid in queue
+            children_pids = children_map.get(pid, [])
+            if children_pids:    # if have children - add children items
+                children_items = [g_treeProcesses[ch_pid] for ch_pid in children_pids]
+                item = g_treeProcesses[pid]
+                item.addChildren(children_items)
+
+                pids_in_tree.extend(children_pids)
+
+        g_mainUi.processTreeWidget.expandAll()
+    else:
+        raise Exception(f'moron {_type}')
+
+
+_ignore_sort = False
+
+def _on_sort(icolumn, order):
+    # column not 0 - flat list
+    # col-0: states 0,1,2
+
+    global _ignore_sort
+
+    if _ignore_sort:
+        return
+
+    header = g_mainUi.processTreeWidget.header()
+    is_indicator = header.isSortIndicatorShown()
+
+    #0,1 => 1,1 -> 0,0! -> 1,1!
+
+    if icolumn == 0:
+        if order == 0  and  is_indicator:     # 1 (1,1) -> 2 (1,0)
+            try:
+                _ignore_sort = True
+                g_mainUi.processTreeWidget.sortItems(0, 1) # column=0, order=1
+            finally:
+                _ignore_sort = False
+            header.setSortIndicatorShown(False)
+            print(f' 1 -> 2')
+
+        elif order == 0:
+            #if not is_indicator:   # 2 (1,0) -> 0 (0,1)
+            header.setSortIndicatorShown(True)
+            set_tree_type('tree')
+            print(f' 2 -> 0')
+
+        elif order == 1: #  and  is_indicator:     # 0 (0,1) -> 1 (1,1)
+            #header.setSortIndicatorShown(True)
+            print(f' 0 -> 1')
+            set_tree_type('flat')
+    else:
+        if not is_indicator:
+            header.setSortIndicatorShown(True)
+        set_tree_type('flat')
+
 
 def prepareUI(mainUi):
     """ prepare the main UI, setup plots and menu triggers
@@ -480,8 +565,14 @@ def prepareUI(mainUi):
     #pal = g_mainUi.processTreeWidget.palette()
     #g_mainUi.processTreeWidget.setPalette(pal)
 
+    #g_mainUi.processTreeWidget.header().clicked.connect(on_click)
+    #g_mainUi.processTreeWidget.header().clicked.connect(on_click)
+    g_mainUi.processTreeWidget.header().sortIndicatorChanged.connect(_on_sort)
 
-    mainUi.processTreeWidget.alternatingRowColors = True
+
+    mainUi.processTreeWidget.setSortingEnabled(True)
+    mainUi.processTreeWidget.setIndentation(10)
+    #mainUi.processTreeWidget.alternatingRowColors = True # doesn't work without a 'model'?
     mainUi.processTreeWidget.setColumnCount(len(g_treeViewcolumns))
 
     mainUi.processTreeWidget.setHeaderLabels(g_treeViewcolumns)
@@ -590,7 +681,16 @@ def addProcessAndParents(proc, procList):
 
     return g_treeProcesses[proc]
 
-def delChild(item, childtodelete):
+def take_all_children(item, removed_items):
+    if item != None:
+        for i in range(item.childCount()-1, -1, -1):
+            ch = item.child(i)
+            if ch != None:
+                take_all_children(ch, removed_items)
+
+                removed_items.append(item.takeChild(i))
+
+def delChild(item, childtodelete, removed_items=None):
     """ Delete child, search recursively
     """
     if item != None:
@@ -598,31 +698,12 @@ def delChild(item, childtodelete):
             thechild = item.child(index)
             if thechild != None:
                 if thechild == childtodelete:
-                    item.takeChild(index)
+                    ch = item.takeChild(index)
+                    if removed_items is not None:
+                        removed_items.append(ch)
                 else:
                     delChild(thechild, childtodelete)
 
-def expandChilds(parent):
-    """ expand all childs of given parent
-    """
-    global g_mainUi
-    for index in range(parent.childCount()):
-        thechild = parent.child(index)
-        if thechild != None:
-            g_mainUi.processTreeWidget.expandItem(thechild)
-            expandChilds(thechild)
-        else:
-            g_mainUi.processTreeWidget.expandItem(parent)
-
-def expandAll():
-    """ expand all subtrees
-    """
-    print(f'------expanding all')
-
-    global g_mainUi
-    for topLevelIndex in range(g_mainUi.processTreeWidget.topLevelItemCount()):
-        item = g_mainUi.processTreeWidget.topLevelItem(topLevelIndex)
-        expandChilds(item)
 
 _printed = False
 
@@ -715,7 +796,6 @@ def updateUI():
                 it.setData(6, 0, g_procList[proc]["nfThreads"])
 
                 # hints for long columns: {"Process","Command Line", "User"} 0,3,4
-                # hints for long columns: {"Process","Command Line", "User"} 0,3,4
                 it.setToolTip(0, g_procList[proc]["name"])
                 it.setToolTip(3, g_procList[proc]["cmdline"])
                 it.setToolTip(4, g_procList[proc]["uid"])
@@ -737,8 +817,9 @@ def updateUI():
                 for column in range(item.columnCount()):
                     item.setBackground(column, QtGui.QColor(0,255,0))
 
+        #FIXME
         if (len(closedProc) > 0) or (len(newProc) > 0):
-            expandAll()
+            g_mainUi.processTreeWidget.expandAll()
 
         for ui in g_singleProcessUiList:
             g_singleProcessUiList[ui].update()
