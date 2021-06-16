@@ -464,6 +464,23 @@ def onHeaderContextMenu(point):
         #g_mainUi.processTreeWidget.setColumnHidden(selectedItem.data().toInt()[0], not selectedItem.isChecked())
         g_mainUi.processTreeWidget.setColumnHidden(selectedItem.data(), not selectedItem.isChecked())
 
+
+def on_filter(filter_str):
+    text_keys = ['name', 'PPID', 'cmdline', 'uid']
+
+    for pid,item in g_treeProcesses.items():
+        proc_data = g_procList[pid]
+
+        is_matches_filter = any(filter_str in str(proc_data[key])  for key in text_keys)
+        item.setHidden(not is_matches_filter)
+
+    if filter_str:
+        #TODO
+        #if not flat:
+        set_tree_type('flat')
+    else:
+        set_tree_type('tree')
+
 # flat or tree
 def set_tree_type(_type):
     if _type == 'flat':
@@ -578,6 +595,8 @@ def prepareUI(mainUi):
     mainUi.processTreeWidget.setHeaderLabels(g_treeViewcolumns)
     mainUi.processTreeWidget.header().setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
     mainUi.processTreeWidget.header().customContextMenuRequested.connect(onHeaderContextMenu)
+
+    mainUi.filter.textChanged.connect(on_filter)
 
     #create a timer which triggers the process explorer to update its contents
     g_timer = QtCore.QTimer(mainUi.processTreeWidget)

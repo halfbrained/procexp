@@ -55,6 +55,15 @@
        
        
        <item>
+        <widget class="QLineEdit" name="filter">
+         <property name="placeholderText">
+          <string>Filter</string>
+         </property>
+        </widget>
+       </item>
+       
+       
+       <item>
         <widget class="QCheckBox" name="freezeCheckBox">
          <property name="text">
           <string>freeze</string>
