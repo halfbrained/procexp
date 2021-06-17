@@ -44,6 +44,14 @@ ram('qwt')
 import utils.procutils
 ram('ut-proc')
 
+try:
+    import gi
+    gi.require_version('Gtk', '3.0')
+    from gi.repository import Gtk
+    _icon_theme = Gtk.IconTheme.get_default()
+except:
+    _icon_theme = None
+
 import procreader.reader
 import logui
 import aboutui
@@ -164,7 +172,17 @@ def _apply_tree_altcolors():
 
 
 def is_tree_mode():
-    _tree_type == 'tree'
+    return _tree_type == 'tree'
+
+def get_icon(proc_cmd):
+    if _icon_theme  and  proc_cmd:
+        # get `name` from `/path/name args`
+        spl = proc_cmd.split()
+        name = os.path.basename(spl[0])
+
+        gtk_ic = _icon_theme.lookup_icon(name, 16, 0)
+        if gtk_ic:
+            return QtGui.QIcon(gtk_ic.get_filename())
 
 
 def performMenuAction(action):
@@ -706,6 +724,11 @@ def addProcessAndParents(proc, procList):
 
     g_treeProcesses[proc] = QtWidgets.QTreeWidgetItem([])
     g_greenTopLevelItems[proc] = g_treeProcesses[proc]
+
+    # try icon
+    qicon = get_icon(procList[proc].get("cmdline")  or  procList[proc].get("name"))
+    if qicon:
+        g_treeProcesses[proc].setIcon(0, qicon)
 
     if is_tree_mode():
         if procList[proc]["PPID"] > 0 and (procList[proc]["PPID"] in procList.keys()): # process has a parent
