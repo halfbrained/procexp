@@ -114,7 +114,7 @@ def _get_top_proc(history_fraction):
     # get length of history  => fraction to index  => proc with max cpu_usage on that history_index
     if g_procList  and  0 <= frac <= 1:
         rnd_hist = list(g_procList.values())[0]['history']
-        ind = round(frac*rnd_hist.HistoryDepth)
+        ind = round(frac*(rnd_hist.HistoryDepth-1))
         _pid_hists = ((pid, d['history']) for pid,d in g_procList.items())
         _pid_usages = ((pid, hist.cpuUsageHistory[ind] + hist.cpuUsageKernelHistory[ind])
                                                                         for pid,hist in _pid_hists)
@@ -259,6 +259,8 @@ def performMenuAction(action):
     else:
         utils.procutils.log("This action (%s)is not yet supported." %action)
 
+
+
 '!!! MY'
 
 class CanvasPicker(QtCore.QObject):
@@ -275,58 +277,43 @@ class CanvasPicker(QtCore.QObject):
         canvas.setCursor(QtCore.Qt.PointingHandCursor)
         canvas.setFocusIndicator(qwt.QwtPlotCanvas.ItemFocusIndicator)
         canvas.setFocus()
+        canvas.setAttribute(QtCore.Qt.WA_Hover) # receive events on mouse hover-move
+        #plot.setAttribute(QtCore.Qt.WA_Hover) # receive events on mouse hover-move
+
         '???'
         #self.__shiftCurveCursor(True)
 
         #plot.setToolTip('!Crap!')
-        self._last_mouse_glob = None
-        self._last_mouse_loc = None
+        self._show_tooltip = False
 
     def event(self, event):
+        #print(f'-- canvas event: {event.type(), event}')
         if event.type() == QtCore.QEvent.User:
                 self.__showCursor(True)
                 return True
         return QtCore.QObject.event(self, event)
 
     def eventFilter(self, object, event):
-        #if event.type() == QtCore.QEvent.MouseMove:
-                #self.__move(event.pos())
-                #print(f'mouse -- {event, event.pos()}')
-                #bp()
-                #self.__plot.setToolTip(f'mouse -- {event, event.pos()}')
-                #return True
-                #return False
         if event.type() == QtCore.QEvent.ToolTip:
-                self._last_mouse_glob = event.globalPos()
+                self._show_tooltip = True
                 self._last_mouse_loc = event.pos()
                 fraction = self._last_mouse_loc.x() / self.__plot.geometry().width()
-                #bp()
-                #self.__plot.setToolTip(f'mouse -- {event, event.pos()}')
                 ttt = _get_top_proc(fraction)
                 self.__plot.setToolTip(ttt)
-                #print(f'--updated ToolTip')
-
-                #return True
-        elif event.type() == QtCore.QEvent.Paint:
-                #bp()
-                if type(self.__plot.toolTip()) is str:
-                    #self.__plot.setToolTip(ttt)
-                    #self.event(QtCore.QEvent(QtCore.QEvent.ToolTipChange))
-                    #self.event(QtCore.QEvent(QtCore.QEvent.ToolTip))
-                    #print(f'painting...: {self.__plot.toolTip()}')
-                    #self.__plot.setToolTip(ttt)
-                    if self._last_mouse_glob:
-                        fraction = self._last_mouse_loc.x() / self.__plot.geometry().width()
-                        ttt = _get_top_proc(fraction)
-                        QtWidgets.QToolTip.showText(self._last_mouse_glob, ttt)
-                #return True
+                return True
+        elif event.type() == QtCore.QEvent.HoverMove:
+            if self._show_tooltip:
+                fraction = event.pos().x() / self.__plot.geometry().width()
+                ttt = _get_top_proc(fraction)
+                globpos = self._CanvasPicker__plot.mapToGlobal(event.pos())
+                QtWidgets.QToolTip.showText(globpos, ttt)
+            return True
         elif event.type() == QtCore.QEvent.Leave:
-            self._last_mouse_glob = None
-            self._last_mouse_loc = None
+            self._show_tooltip = False
 
-        else:
+        #else:
                 #print(f'-------other ev: {event, event.type(), dir(event)}')
-                print(f'-------other ev: {event, event.type()}')
+                #print(f'-------other ev: {event, event.type()}')
         return False
 
     def __showCursor(self, showIt):
@@ -581,7 +568,6 @@ def _on_header_click(logical_ind):
     if logical_ind != 0:
         set_tree_type('flat')
 
-
 def prepareUI(mainUi):
     """ prepare the main UI, setup plots and menu triggers
     """
@@ -594,12 +580,12 @@ def prepareUI(mainUi):
     palette.setColor(palette.Background,    QtGui.QColor(0xe0, 0xe0, 0xe0))
     palette.setColor(palette.Base,          QtGui.QColor(0xe0, 0xe0, 0xe0))
     app.setPalette(palette)
-    #pal = g_mainUi.processTreeWidget.palette()
-    #g_mainUi.processTreeWidget.setPalette(pal)
+    #pal = mainUi.processTreeWidget.palette()
+    #mainUi.processTreeWidget.setPalette(pal)
 
-    #g_mainUi.processTreeWidget.header().clicked.connect(on_click)
-    #g_mainUi.processTreeWidget.header().sortIndicatorChanged.connect(_on_sort)
-    g_mainUi.processTreeWidget.header().sortIndicatorChanged.connect(_on_header_click)
+    #mainUi.processTreeWidget.header().clicked.connect(on_click)
+    #mainUi.processTreeWidget.header().sortIndicatorChanged.connect(_on_sort)
+    mainUi.processTreeWidget.header().sortIndicatorChanged.connect(_on_header_click)
 
 
     mainUi.processTreeWidget.setSortingEnabled(True)
@@ -656,6 +642,8 @@ def prepareUI(mainUi):
                                                       mainUi.qwtPlotOverallCpuHist)
 
     '!!! MY'
+    global _cpu_hist_picker, _hotkey_filter
+
     _cpu_hist_picker = CanvasPicker(mainUi.qwtPlotOverallCpuHist)
     _hotkey_filter = HotkeyFilter(mainUi)
 
