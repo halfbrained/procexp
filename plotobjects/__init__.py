@@ -17,7 +17,6 @@
 
 
 from PyQt5 import QtCore, QtGui
-'!!! ERR'
 #import PyQt5.Qwt as Qwt
 import qwt
 

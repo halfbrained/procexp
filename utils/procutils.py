@@ -34,7 +34,7 @@ def message(msg):
   errorbox = QtWidgets.QMessageBox()
   errorbox.setText(msg)
   errorbox.exec_()
-  
+
 
 def logUnhandledException(exc_type, exc_value, exc_traceback):
   """log an unhandled exception"""
@@ -43,12 +43,12 @@ def logUnhandledException(exc_type, exc_value, exc_traceback):
     traceback.extract_tb(exc_traceback).pop()
   filename = os.path.basename(filename)
   error = "%s: %s" % (str(exc_type).split(".")[-1], exc_value)
-  msg = error + " on line %d, file %s" % (line, filename) 
+  msg = error + " on line %d, file %s" % (line, filename)
   errorbox = QtWidgets.QMessageBox()
   errorbox.setText("Unhandled exception:\n"+msg)
   errorbox.exec_()
   file("/tmp/procexp.log","ab").write(msg+"\n")
-  
+
 # sys.excepthook = logUnhandledException
 
 def log(msg):
@@ -71,14 +71,15 @@ class FileError(Exception):
   pass
 
 def readFullFile(path):
-  return open(path,"r").read()
+    with open(path,"r") as f:
+        return f.read()
 
 def killProcess(process):
   try:
     os.kill(int(process), signal.SIGTERM)
   except OSError:
     pass
-  
+
 def killProcessHard(process):
   os.kill(int(process), signal.SIGKILL)
 
@@ -98,7 +99,7 @@ class IpResolver(object):
     self._maxResolvers = 20
     self._nrResolvers = 0
     self._resolvedTable = {}
-    
+
   def _doRsolve(self, ip):
     """resolve the given IP"""
     try:
@@ -108,7 +109,7 @@ class IpResolver(object):
       name = ip
     self._resolvedTable[ip] = name
     self._nrResolvers -= 1
-    
+
   def resolveIP(self, ip):
     """resolve IP number"""
     if ip in self._resolvedTable:
@@ -121,12 +122,12 @@ class IpResolver(object):
       #because the resolver is working we return the IP for now.
       #hopefully the next request the resolver will have done its job.
       return ip
-    
+
 def resolveIP(ip):
   """resolve IP, multithreaded"""
   global _ipResolver
   if _ipResolver is None:
-    _ipResolver = IpResolver()     
+    _ipResolver = IpResolver()
   return _ipResolver.resolveIP(ip)
 
 

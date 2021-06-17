@@ -85,7 +85,6 @@ g_procList = {}
 
 #default settings
 g_settings = {}
-#TODO add: sort type, is tree
 g_defaultSettings = {
   "fontSize": 10,
   "columnWidths": [100,60,40,100,30,30,30,30],
@@ -881,7 +880,7 @@ if __name__ == "__main__":
   g_mainWindow.show()
   app.processEvents()
 
-  rootproxy.start(asRoot=False)
+  rootproxy.start(asRoot=True)
   if not rootproxy.isStarted():
     messageui.doMessageWindow("Process explorer has no root privileges. TCPIP traffic monitoring (using tcpdump) will not be available.")
 

@@ -22,7 +22,6 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
-'!!! ERR'
 # not used?
 #import PyQt5.Qwt as Qwt
 import plotobjects
@@ -42,8 +41,6 @@ class memoryPlotObject(object):
     self.__memoryUsageHistory__ = [0] * int(self.__depth__)
 
   def update(self, values):
-    #print('--update memoryPlotObject')
-
     if self.__first__ == False:
       self.__first__ = True
       scale = plotobjects.scaleObject()
@@ -90,8 +87,6 @@ class cpuPlotObject(object):
     self.__cpuUsageIrqHistory__ = [0] * int(self.__depth__)
 
   def update(self):
-    #print('--update cpuPlotObject')
-
     values = self.__reader__.getSingleCpuUsage(self.__cpu__)
     self.__cpuUsageHistory__.append(values[0]+values[1]+values[2]+values[3])
     self.__cpuUsageHistory__ = self.__cpuUsageHistory__[1:]
@@ -190,8 +185,6 @@ class systemOverviewUi(object):
 
 
   def update(self):
-    #print('--update systemOverviewUi')
-
     if not self._shown:
         return
 

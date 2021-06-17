@@ -20,7 +20,6 @@
 # Display process properties and statistics of a single process
 #
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
-'!!! ERR'
 #from PyQt5 import Qwt
 import qwt
 import subprocess
