@@ -159,7 +159,7 @@ def _apply_tree_altcolors():
 
     root = g_mainUi.processTreeWidget.invisibleRootItem()
     baseBgColor = g_mainUi.processTreeWidget.palette().color(QtGui.QPalette.Base)
-    altBgColor = g_mainUi.processTreeWidget.palette().color(QtGui.QPalette.AlternateBase)
+    altBgColor  = g_mainUi.processTreeWidget.palette().color(QtGui.QPalette.AlternateBase)
     scan_apply(root)
 
 
@@ -382,10 +382,21 @@ class HotkeyFilter(QtCore.QObject):
         #print(f'-------other ev: {event, event.type()}')
         return False
 
+class TreeZebraFilter(QtCore.QObject):
+    def __init__(self, ob):
+        QtCore.QObject.__init__(self, ob)
+
+        ob.installEventFilter(self)
+
+    def eventFilter(self, object, event):
+        if event.type() == QtCore.QEvent.Paint:
+            _apply_tree_altcolors()
+        return False
+
 
 _cpu_hist_picker = None
 _hotkey_filter = None
-
+_zebra_filter = None
 
 def setFontSize(fontSize):
     global g_settings
@@ -642,10 +653,11 @@ def prepareUI(mainUi):
                                                       mainUi.qwtPlotOverallCpuHist)
 
     '!!! MY'
-    global _cpu_hist_picker, _hotkey_filter
+    global _cpu_hist_picker, _hotkey_filter, _zebra_filter
 
     _cpu_hist_picker = CanvasPicker(mainUi.qwtPlotOverallCpuHist)
     _hotkey_filter = HotkeyFilter(mainUi)
+    _zebra_filter = TreeZebraFilter(mainUi)
 
     scale = plotobjects.scaleObject()
     scale.min = 0
@@ -757,9 +769,6 @@ def updateUI():
         g_reader.doReadProcessInfo()
         g_procList, closedProc, newProc = g_reader.getProcessInfo()
 
-
-        # apply alt colors
-        _apply_tree_altcolors()
 
         # color all green processes with default background
         defaultBgColor = app.palette().color(QtGui.QPalette.Base)
